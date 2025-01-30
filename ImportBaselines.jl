@@ -8,7 +8,7 @@ import Distributions.fit
 # Update code here after revising
 include("Constant.jl")
 include("Marginal.jl")
-include("Historic.jl")
+include("LSD.jl")
 
 include("OLS.jl")
 include("IDS.jl")
