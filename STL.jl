@@ -179,6 +179,7 @@ function predict(fit::stlFitted,
                  nChains::Int64 = 10000)
     #
     nObs = length(fit.x)
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
     init = fit.par.S[end] + fit.par.T[end]
     Tavg = mean(diff(fit.par.T))
     Savg = (i -> mean(fit.par.S[i:fit.model.p:end])).(1:fit.model.p)
@@ -202,5 +203,13 @@ function predict(fit::stlFitted,
         Q[Q .< 0] .= 0
     end
 
-    return forecast(Q, quant, collect(1:h))
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    return forecast(1:h, mean = out, median = out, interval = interval)
 end

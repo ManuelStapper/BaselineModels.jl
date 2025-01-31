@@ -149,6 +149,8 @@ function predict(fit::armaFitted,
 
     m = (t -> μ(fit.par.μ, t)).(tSeq)
     y = fit.x .- m[1:T]
+
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
     
     yHat = zeros(T + h)
     e = zeros(T + h)
@@ -181,6 +183,14 @@ function predict(fit::armaFitted,
     if fit.model.isPos
         Q[Q .< 0] .= 0
     end
-    
-    return forecast(Q, quant, collect(1:h))
+
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    return forecast(1:h, mean = out[T+1:end], median = out[T+1:end], interval = interval)
 end

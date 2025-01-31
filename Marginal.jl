@@ -31,6 +31,7 @@ function predict(fit::marginalFitted,
                  quant::Vector{Float64})
     #
     out = fill(fit.par.μ, h)
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
     
     # Get intervals from historic h-step-ahead forecast errors
     Q = zeros(length(quant), h)
@@ -55,5 +56,14 @@ function predict(fit::marginalFitted,
     if fit.model.isPos
         Q[Q .< 0] .= 0
     end
-    return forecast(Q, quant, collect(1:h))
+
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    return forecast(1:h, mean = out, median = out, interval = interval)
 end

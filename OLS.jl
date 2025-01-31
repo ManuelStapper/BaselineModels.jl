@@ -49,6 +49,7 @@ function predict(fit::olsFitted,
     T = length(fit.x)
     p = fit.model.p
     d = fit.model.d
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
 
     out = fill(fit.par.β[1], h)
     for i = 1:d
@@ -91,5 +92,13 @@ function predict(fit::olsFitted,
         Q[Q .< 0] .= 0
     end
 
-    return forecast(Q, quant, collect(1:h))
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    return forecast(1:h, mean = out, median = out, interval = interval)
 end

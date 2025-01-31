@@ -76,10 +76,6 @@ function etsModel(;error::String = "A",
         st = Aseason(m)
     elseif season == "M"
         st = Mseason(m)
-    elseif season == "Ap"
-        st = AseasonPre(m, k)
-    elseif season == "Mp"
-        st = MseasonPre(m, k)
     else
         st = Nseason()
     end
@@ -696,6 +692,7 @@ function predict(fit::etsFitted,
     T = length(x)
     out = zeros(h)
     filtered = etsFilter(x, fit.model, fit.par)
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
 
     σ = std(filtered.ϵ) + 0.01
     zCurr = filtered.z[end]
@@ -719,5 +716,13 @@ function predict(fit::etsFitted,
         Q[:, i] = quantile(Y[:, i], quant)
     end
 
-    return forecast(Q, quant, collect(1:h))
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    return forecast(1:h, mean = out, median = out, interval = interval)
 end

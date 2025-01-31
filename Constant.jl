@@ -7,8 +7,8 @@
 
 struct constantModel <: Baseline
     isPos::Bool
-    function constantModel()
-        new(true)
+    function constantModel(isPos = true)
+        new(isPos)
     end
 end
 
@@ -29,8 +29,10 @@ end
 
 function predict(fit::constantFitted,
                  h::Int64,
-                 quant::Vector{Float64})
+                 quant::Vector{Float64}) where {T1 <: Real}
     out = fill(fit.par.μ, h)
+    # Making sure that quantiles are symmetric and sorted
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
     Q = zeros(length(quant), h)
 
     for hh = 1:h
@@ -43,5 +45,14 @@ function predict(fit::constantFitted,
     if fit.model.isPos
         Q[Q .< 0] .= 0
     end
-    return forecast(Q, quant, collect(1:h))
+
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    return forecast(1:h, mean = out, median = out, interval = interval)
 end

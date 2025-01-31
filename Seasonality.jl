@@ -1,6 +1,8 @@
 # Functions to remove seasonality before fitting
 # Goal: Fit a sine-cosine seasonality to avoid neccessity of long training data
 
+# Change forecast type here!
+
 mutable struct seasonalityParameter
     θ::Vector{T1} where {T1 <: Real}
     κ::Vector{T2} where {T2 <: Real}
@@ -53,14 +55,32 @@ function preFilter(x::Vector{T1}, m::Int64, k::Int64) where {T1 <: Real}
 end
 
 
-function postFilter(x::Vector{T1}, fc::forecast, m::Int64, est::seasonalityParameter, xTruth::Vector{T2}) where {T1, T2 <: Real}
+
+function postFilter(x::Vector{T1}, fc::forecast,
+    m::Int64, est::seasonalityParameter) where {T1 <: Real}
+
     h = maximum(fc.horizon)
     μNew = getS(est, m, length(x) + h)[end-h+1:end]
     μNew = μNew[fc.horizon]
     mlx = mean(log.(x .+ 1))
-    for i = 1:size(fc.Qmat)[1]
-        fc.Qmat[i, :] = fc.Qmat[i, :] .* exp.((μNew .+ mlx))
+    Q = getQmat(fc)
+    for i = 1:size(Q)[1]
+        Q[i, :] = Q[i, :] .* exp.((μNew .+ mlx))
     end
-    fc.truth = xTruth
-    return fc
+
+    meanOut = fc.mean  .* exp.((μNew .+ mlx))
+    medianOut = fc.mean  .* exp.((μNew .+ mlx))
+
+    quant = unique(vcat(getQuantiles(fc)...))/2
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
+
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    return forecast(1:h, mean = meanOut, median = medianOut, interval = interval)
 end

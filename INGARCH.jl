@@ -5,7 +5,7 @@ mutable struct inarchModel <: Baseline
     p::Int64
     m::Int64
     nb::Bool
-    function inarchModel(p, m, nb = true)
+    function inarchModel(p, m = 0, nb = true)
         new(p, m, nb)
     end
 end
@@ -49,6 +49,7 @@ function predict(fit::inarchFitted,
                  nChain::Int64 = 10000)
     results = fit.par
     r = length(results.model.external)
+    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
 
     y = results.y
     T = length(y)
@@ -173,5 +174,16 @@ function predict(fit::inarchFitted,
         Q[:, i] = quantile(Y[:, i+1], quant)
     end
 
-    return forecast(Q, quant, collect(1:h))
+    interval = forecastInterval[]
+    for hh = 1:h
+        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
+        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
+        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
+        push!(interval, forecastInterval(αs, ls, us))
+    end
+
+    medY = Q[Int64((size(Q)[1] - 1)/2) + 1, :]
+
+
+    return forecast(1:h, mean = meanY, median = medY, interval = interval)
 end
