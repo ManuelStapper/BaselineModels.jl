@@ -1,6 +1,4 @@
 # Also include INARCH model with potential seasonality
-using CountTimeSeries
-
 mutable struct inarchModel <: Baseline
     p::Int64
     m::Int64

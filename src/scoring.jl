@@ -17,7 +17,7 @@ function WIS(fc::forecast, h::Int64, returnSingle::Bool = false)
     out[1] = w0 * abs(fc.truth[hind] - fc.median[hind])
     
     for k = 1:K
-        ind1 = argmin(abs.(quant .- α[k]/2))
+        ind1 = k
         ind2 = size(Qmat)[1] - ind1 + 1
         l = Qmat[ind1, hind]
         u = Qmat[ind2, hind]

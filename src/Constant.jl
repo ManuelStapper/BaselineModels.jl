@@ -29,7 +29,7 @@ end
 
 function predict(fit::constantFitted,
                  h::Int64,
-                 quant::Vector{Float64}) where {T1 <: Real}
+                 quant::Vector{Float64})
     out = fill(fit.par.μ, h)
     # Making sure that quantiles are symmetric and sorted
     quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
