@@ -7,6 +7,9 @@ function WIS(fc::forecast, h::Int64, returnSingle::Bool = false)
     else
         hind = hind[1]
     end
+    if length(fc.truth) == 0
+        error("No truth data available")
+    end
     w0 = 1/2
     α = getQuantiles(fc)[fc.horizon .== h][1]
     Qmat = getQmat(fc)
@@ -46,6 +49,9 @@ function QRPS(fc::forecast, h::Int64)
         error("No forecasts found for horizon")
     else
         hind = hind[1]
+    end
+    if length(fc.truth) == 0
+        error("No truth data available")
     end
     out = 0.0
     α = getQuantiles(fc)[fc.horizon .== h][1]
