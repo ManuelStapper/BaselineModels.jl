@@ -19,6 +19,7 @@ include("INGARCH.jl")
 include("STL.jl")
 include("ETS.jl")
 
+include("Seasonality.jl")
 include("scoring.jl")
 
 export Baseline, forecastInterval, forecast, addTruth, addTrajectory, addMean, addMedian, getQuantiles, getQmat
