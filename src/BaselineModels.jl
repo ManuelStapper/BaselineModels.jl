@@ -14,7 +14,7 @@ include("OLS.jl")
 include("IDS.jl")
 
 include("ARMA.jl")
-include("INGARCH.jl")
+include("INARCH.jl")
 
 include("STL.jl")
 include("ETS.jl")

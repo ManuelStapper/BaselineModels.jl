@@ -35,6 +35,7 @@ mutable struct forecast
     interval::Vector{forecastInterval}
     truth::Vector{T3} where {T3 <: Real}
     trajectory::Matrix{T4} where {T4 <: Real}
+    
     function forecast(horizon = Int64[];
         mean = Float64[],
         median = Float64[],

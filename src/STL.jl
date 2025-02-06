@@ -14,7 +14,6 @@ struct stlModel <: Baseline
 end
 
 # Constructor with default values
-
 function stlModel(;p::Int64 = 1,
                   i::Int64 = 1,
                   o::Int64 = 5,
@@ -24,7 +23,7 @@ function stlModel(;p::Int64 = 1,
                   isPos::Bool = true)
     #
     if l == -1
-        l = 2*p + 1
+        l = p + iseven(p)
     end
     if t == -1
         t = ceil(Int64, 3/2*p/(1 - 3/(2*s)))
