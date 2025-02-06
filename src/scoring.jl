@@ -1,6 +1,8 @@
 ### Scoring functions
 
-function WIS(fc::forecast, h::Int64, returnSingle::Bool = false)
+function WIS(fc::forecast, h::Int64;
+             logTrafo::Bool = false,
+             returnSingle::Bool = false)
     hind = findall(fc.horizon .== h)
     if length(hind) == 0
         error("No forecasts found for horizon")
@@ -15,16 +17,24 @@ function WIS(fc::forecast, h::Int64, returnSingle::Bool = false)
     Qmat = getQmat(fc)
     K = length(α)
     w = α ./ 2
+
+    truth = fc.truth
+    med = fc.median
+    if logTrafo
+        truth = log.(truth .+ 1)
+        Qmat = log.(Qmat .+ 1)
+        med = log.(median .+ 1)
+    end
     
     out = zeros(4)
-    out[1] = w0 * abs(fc.truth[hind] - fc.median[hind])
+    out[1] = w0 * abs(truth[hind] - med[hind])
     
     for k = 1:K
         ind1 = k
         ind2 = size(Qmat)[1] - ind1 + 1
         l = Qmat[ind1, hind]
         u = Qmat[ind2, hind]
-        y = fc.truth[hind]
+        y = truth[hind]
 
         out[2] += w[k] * (u - l)
         out[3] += w[k] * 2/α[k]*(l - y)*(y < l)
@@ -43,7 +53,7 @@ function WIS(fc::forecast)
 end
 
 
-function QRPS(fc::forecast, h::Int64)
+function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
     hind = findall(fc.horizon .== h)
     if length(hind) == 0
         error("No forecasts found for horizon")
@@ -62,10 +72,16 @@ function QRPS(fc::forecast, h::Int64)
     else
         quants = [quants; reverse(1 .- quants)]
     end
+
+    truth = fc.truth
+    if logTrafo
+        truth = log.(truth .+ 1)
+        Qmat = log.(Qmat .+ 1)
+    end
     
     Fq = [0; quants; 1]
     xq = [-Inf; Qmat[:, hind]; Inf]
-    y = fc.truth[hind]
+    y = truth[hind]
 
     for i = 1:length(xq) - 1
         l = xq[i]
