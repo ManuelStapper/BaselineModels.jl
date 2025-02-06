@@ -54,9 +54,9 @@ The IDS model is similar to the OLS model, it is defined through `p` and `isPos`
 The model is defined by the AMRA orders `p` and `q`, `isPos` and the seasonality structure. The seasonality is specified by a function `µ` that has the time and a parameter vector as input. In addition `µDim` gives the dimension of the parameter vector. The model is fit by Maximum Likelihood. The seasonality is subtracted from the time series and an INARMA($p$, $q$) with mean zero is fit. The default seasonality is a constant intercept.
 To simplify model definition, users may use the constructor `armaModel(p, q; m, trend)`, which defines a model with simple sine-cosine seasonality of periodicity `m` and may further include a trend. 
 
-### INGARCH - Integer-Values GARCH
+### INARCH - Integer-Values ARCH
 
-The integer-values counterpart of a GARCH process is defined by `p`, `m` and `nb`. `p` gives the "AR-order", the "MA-order" is always zero. `m` gives the periodicity, which is one by default, i.e. no seasonality. The conditional distribution is seleted by `nb`, such that a Poisson distribution is assumed if set to `false` and a Negative Binomial if it is `true`. The model is only applicable if the time series is integer-values and non-negative. 
+The integer-values counterpart of a GARCH process is defined by `p`, `m`, `k` and `nb`. `p` gives the "AR-order". `m` gives the periodicity, which is one by default, i.e. no seasonality, `k` gives the number of harmonic waves with baseline periodicity `m` are included. The conditional distribution is seleted by `nb`, such that a Poisson distribution is assumed if set to `false` and a Negative Binomial if it is `true`. The model is only applicable if the time series is integer-values and non-negative. 
 
 ### ETS - Exponential Smoothing Error-Trend-Seasonality
 
