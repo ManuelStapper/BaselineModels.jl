@@ -52,7 +52,6 @@ function WIS(fc::forecast)
     (h -> WIS(fc, h)).(fc.horizon)
 end
 
-
 function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
     hind = findall(fc.horizon .== h)
     if length(hind) == 0
