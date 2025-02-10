@@ -5,8 +5,8 @@
 struct marginalModel <: Baseline
     p::Int64
     isPos::Bool
-    function marginalModel(p::Int64)
-        new(p, true)
+    function marginalModel(p::Int64, isPos::Bool = true)
+        new(p, isPos)
     end
 end
 
