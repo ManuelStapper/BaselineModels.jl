@@ -48,8 +48,8 @@ function WIS(fc::forecast, h::Int64;
 end
 
 
-function WIS(fc::forecast)
-    (h -> WIS(fc, h)).(fc.horizon)
+function WIS(fc::forecast; logTrafo::Bool = false)
+    (h -> WIS(fc, h, logTrafo = logTrafo)).(fc.horizon)
 end
 
 function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
@@ -87,7 +87,7 @@ function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
         u = xq[i+1]
         if y < l
             if isfinite(u)
-                out += (1 - Fq[i]^2) * (u - l)
+                out += (1 - Fq[i])^2 * (u - l)
             end
         elseif y > u
             if isfinite(l)
@@ -105,6 +105,6 @@ function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
     out
 end
 
-function QRPS(fc::forecast)
-    (h -> QRPS(fc, h)).(fc.horizon)
+function QRPS(fc::forecast; logTrafo::Bool = false)
+    (h -> QRPS(fc, h, logTrafo = logTrafo)).(fc.horizon)
 end

@@ -21,6 +21,7 @@ include("ETS.jl")
 
 include("Seasonality.jl")
 include("scoring.jl")
+include("Calibration.jl")
 
 export Baseline, forecastInterval, forecast, addTruth, addTrajectory, addMean, addMedian, getQuantiles, getQmat
 export WIS, QRPS, fit, predict
@@ -34,6 +35,7 @@ export marginalModel, marginalParameter, marginalFitted
 export olsModel, olsParameter, olsFitted
 export stlModel, stlParameter, stlFitted
 export seasonalityParameter, fitS, preFilter, postFilter
+export makeStep, PITfun, PIThist, CvMdivergence, GoF
 
 end
 
