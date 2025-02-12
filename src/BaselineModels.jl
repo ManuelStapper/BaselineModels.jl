@@ -1,5 +1,5 @@
 module BaselineModels
-using Distributions, LinearAlgebra, Optim, CountTimeSeries, Random
+using Distributions, LinearAlgebra, Optim, CountTimeSeries, Random, QuadGK
 
 abstract type Baseline end
 include("forecast.jl")
