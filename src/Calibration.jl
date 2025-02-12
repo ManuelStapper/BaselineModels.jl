@@ -66,7 +66,7 @@ end
 
 function PITfun(forecasts::Vector{forecast}, horizon::Int64 = 1)
     steps = makeStep.(forecasts, horizon)
-    u -> eval(u, steps)
+    u -> evalStep(u, steps)
 end
 
 function PITfun(forecasts::Vector{forecast}, horizon::Vector{Int64} = [1])
@@ -79,7 +79,7 @@ function PITfun(forecasts::Vector{forecast}, horizon::Vector{Int64} = [1])
         end
     end
 
-    u -> eval(u, steps)
+    u -> evalStep(u, steps)
 end
 
 function PIThist(forecasts::Vector{forecast}, horizon = 1, nBins::Int64 = 10)
