@@ -98,6 +98,12 @@ function CvMdivergence(forecasts::Vector{forecast}, horizon = 1)
     quadgk(u -> (F1(u) - u)^2, 0, 1)[1] * N
 end
 
+function CvMdivergence(steps::Vector{oneStepFunction})
+    N = length(steps)
+    F1 = u -> evalStep(u, steps)
+    quadgk(u -> (F1(u) - u)^2, 0, 1)[1] * N
+end
+
 function GoF(forecasts::Vector{forecast}, horizon = 1, returnAll::Bool = false)
     α = forecasts[1].interval[1].α
     steps = oneStepFunction[]
