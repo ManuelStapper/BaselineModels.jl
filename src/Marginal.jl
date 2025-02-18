@@ -35,21 +35,26 @@ function predict(fit::marginalFitted,
     
     # Get intervals from historic h-step-ahead forecast errors
     Q = zeros(length(quant), h)
-    ϵ = zeros(length(fit.x) - h, h)
-    for t = 1:length(fit.x) - h
-        tStart = maximum([1, t - fit.model.p])
-        temp = mean(fit.x[tStart:t])
-        ϵ[t, :] = fit.x[t:t+h-1] .- temp
+
+    # Collecting all past h-step ahead prediction errors
+    ϵ = fill(Float64[], h)
+    T = length(fit.x)
+    for t = 2:T-1
+        ind = maximum([t - fit.model.p, 1]):(t-1)
+        μ = mean(fit.x[ind])
+        for hh = 1:h
+            if t + hh <= T
+                ϵ[hh] = [ϵ[hh]; fit.x[t + hh] - μ]
+            end
+        end
     end
-    
+    for hh = 1:h
+        ϵ[hh] = [ϵ[hh]; -ϵ[hh]]
+    end
 
     for hh = 1:h
-        pL = fit.model.p + hh
-        pU = 1 + hh
-        ϵh = (t -> fit.x[t] - mean(fit.x[t - pL:t-pU])).(fit.model.p + hh + 1:length(fit.x))
-        ϵh = [ϵh; -ϵh]
         for q = 1:length(quant)
-            Q[q, hh] = out[hh] + quantile(ϵh, quant[q])
+            Q[q, hh] = out[hh] + quantile(ϵ[hh], quant[q])
         end   
     end
     
