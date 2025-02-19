@@ -14,7 +14,8 @@ function WIS(fc::forecast, h::Int64;
     end
     w0 = 1/2
     α = getQuantiles(fc)[fc.horizon .== h][1]
-    Qmat = getQmat(fc)
+    int = fc.interval[hind]
+
     K = length(α)
     w = α ./ 2
 
@@ -22,20 +23,18 @@ function WIS(fc::forecast, h::Int64;
     med = fc.median
     if logTrafo
         truth = log.(truth .+ 1)
-        Qmat = log.(Qmat .+ 1)
+        int.l = log.(int.l .+ 1)
+        int.u = log.(int.u .+ 1)
         med = log.(median .+ 1)
     end
     
     out = zeros(4)
     out[1] = w0 * abs(truth[hind] - med[hind])
-    
-    for k = 1:K
-        ind1 = k
-        ind2 = size(Qmat)[1] - ind1 + 1
-        l = Qmat[ind1, hind]
-        u = Qmat[ind2, hind]
-        y = truth[hind]
+    y = truth[hind]
 
+    for k = 1:K
+        l = int.l[k]
+        u = int.u[k]
         out[2] += w[k] * (u - l)
         out[3] += w[k] * 2/α[k]*(l - y)*(y < l)
         out[4] += w[k] * 2/α[k]*(y - u)*(y > u)
@@ -63,23 +62,25 @@ function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
         error("No truth data available")
     end
     out = 0.0
-    α = getQuantiles(fc)[fc.horizon .== h][1]
+    α = getQuantiles(fc)[hind]
     quants = [α ./ 2; reverse(1 .- α ./ 2)]
-    Qmat = getQmat(fc)
+    int = fc.interval[hind]
+    
     if length(fc.median) > 0
         quants = [quants; 0.5; reverse(1 .- quants)]
+        xq = [-Inf; int.l; fc.median[hind]; reverse(int.u); Inf]
     else
         quants = [quants; reverse(1 .- quants)]
+        xq = [-Inf; int.l; reverse(int.u); Inf]
     end
 
     truth = fc.truth
     if logTrafo
         truth = log.(truth .+ 1)
-        Qmat = log.(Qmat .+ 1)
+        xq = log.(xq .+ 1)
     end
     
     Fq = [0; quants; 1]
-    xq = [-Inf; Qmat[:, hind]; Inf]
     y = truth[hind]
 
     for i = 1:length(xq) - 1
