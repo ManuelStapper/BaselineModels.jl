@@ -48,7 +48,7 @@ function predict(fit::kdeFitted,
         Q[i] = yy[ind] + (yy[ind + 1] - yy[ind])*(xx[ind + 1] - quant[i])/(xx[ind+1] - xx[ind])
     end
 
-    if isPos
+    if fit.model.isPos
         Q[Q .< 0] .= 0.0
     end
 
