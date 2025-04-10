@@ -38,7 +38,8 @@ function makeStep(x::forecast, horizon::Int64 = 1)
     end
     indH = x.horizon .== horizon
     if sum(indH) == 0
-        error("Cannot find horizon")
+        # error("Cannot find horizon")
+        return missing
     end
     ind = findfirst(indH)
     truth = x.truth[ind]
@@ -66,6 +67,7 @@ end
 
 function PITfun(forecasts::Vector{forecast}, horizon::Int64 = 1)
     steps = makeStep.(forecasts, horizon)
+    steps = Vector{oneStepFunction}(steps[.!ismissing.(steps)])
     u -> evalStep(u, steps)
 end
 
@@ -98,94 +100,9 @@ function CvMdivergence(forecasts::Vector{forecast}, horizon = 1)
     quadgk(u -> (F1(u) - u)^2, 0, 1)[1] * N
 end
 
+# Below function could be sped up by utilising discreteness
 function CvMdivergence(steps::Vector{oneStepFunction})
     N = length(steps)
     F1 = u -> evalStep(u, steps)
     quadgk(u -> (F1(u) - u)^2, 0, 1)[1] * N
 end
-
-function GoF(forecasts::Vector{forecast}, horizon = 1, returnAll::Bool = false)
-    α = forecasts[1].interval[1].α
-    steps = oneStepFunction[]
-    binWarning = false
-    hasMedian = length(forecasts[1].median) > 0
-
-    for i = 1:length(forecasts)
-        for hh in horizon
-            if hh in forecasts[i].horizon
-                α2 = forecasts[i].interval[findfirst(forecasts[i].horizon .== hh)].α
-
-                if (α2 == α) & (hasMedian == (length(forecasts[i].median) > 0))
-                    push!(steps, makeStep(forecasts[i], hh))
-                else
-                    if !binWarning
-                        println("Quantile probabilities do not match")
-                        binWarning = true
-                    end
-                end
-            end
-        end
-    end
-
-    binLimits = [0.0; α ./ 2; if hasMedian 0.5 else Float64[] end; reverse(1 .- α ./ 2); 1.0]
-    binLimits = round.(binLimits, digits = 3)
-    N = length(steps)
-    E = diff(binLimits) .* N
-
-    ls = (z -> z.l).(steps)
-    O = (l -> sum(ls .== l)).(binLimits[1:end-1])
-    diffs = (O .- E) .^ 2 ./ E
-    if returnAll
-        return diffs
-    end
-    stat = sum(diffs)
-
-    pVal = ccdf(Chisq(length(binLimits) - 2), stat)
-
-    stat, pVal
-end
-
-
-####################################
-######## Example code below ########
-####################################
-
-# Quick example:
-# Compare an uninformed forecast with a forecast that includes more true assumptions
-
-# N = 200
-# μ = rand(Normal(0, sqrt(4)), N)
-# x = rand.(Normal.(μ, sqrt(0.5)))
-
-# Prediction 1: Without knowning μ
-# Prediction 2: Knowing μ
-# σ1 = sqrt(var(x))
-# σ2 = sqrt(var(x .- μ))
-
-# fc1 = forecast[]
-# fc2 = forecast[]
-
-# α = collect(0.01:0.01:0.49)
-
-# for i = 1:N
-#     l = quantile.(Normal(0.0, σ1), α)
-#     u = reverse(quantile.(Normal(0.0, σ1), reverse(1 .- α)))
-#     int = forecastInterval(α .* 2, l, u)
-#     push!(fc1, forecast([1], median = [0.0], interval = int, truth = [x[i]]))
-
-#     l = quantile.(Normal(μ[i], σ2), α)
-#     u = reverse(quantile.(Normal(μ[i], σ2), reverse(1 .- α)))
-#     int = forecastInterval(α .* 2, l, u)
-#     push!(fc2, forecast([1], median = [μ[i]], interval = int, truth = [x[i]]))
-# end
-
-# F1 = PITfun(fc1)
-# F2 = PITfun(fc2)
-
-# plot(F1, xlims = (0, 1), lw = 2)
-# plot!(F2, xlims = (0, 1), lw = 2)
-# plot!(u -> u, color = "black", lw = 2, linestyle = :dash)
-
-# GoF(fc1)
-# GoF(fc2)
-

@@ -51,7 +51,7 @@ function WIS(fc::forecast; logTrafo::Bool = false)
     (h -> WIS(fc, h, logTrafo = logTrafo)).(fc.horizon)
 end
 
-function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
+function QRPS2(fc::forecast, h::Int64; logTrafo::Bool = false)
     hind = findall(fc.horizon .== h)
     if length(hind) == 0
         error("No forecasts found for horizon")
@@ -77,7 +77,7 @@ function QRPS(fc::forecast, h::Int64; logTrafo::Bool = false)
     truth = fc.truth
     if logTrafo
         truth = log.(truth .+ 1)
-        xq = log.(xq .+ 1)
+        xq = [-Inf; log.(xq[2:end-1] .+ 1); Inf]
     end
     
     Fq = [0; quants; 1]

@@ -34,6 +34,11 @@ using Test
     res = fit(x, model)
     pred = predict(res, 10, [0.1, 0.9])
 
+    # KDE
+    model = kdeModel()
+    res = fit(x, model)
+    pred = predict(res, 10, [0.1, 0.9])
+
     # LSD
     model = lsdModel(10, 2)
     res = fit(x, model)
