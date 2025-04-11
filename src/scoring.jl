@@ -25,7 +25,7 @@ function WIS(fc::forecast, h::Int64;
         truth = log.(truth .+ 1)
         int.l = log.(int.l .+ 1)
         int.u = log.(int.u .+ 1)
-        med = log.(median .+ 1)
+        med = log.(med .+ 1)
     end
     
     out = zeros(4)
