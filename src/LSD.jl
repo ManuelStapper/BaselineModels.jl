@@ -115,7 +115,7 @@ function predict(fit::lsdFitted,
         s = mod(T + hh, S)
         s = ifelse(s == 0, S, s)
         ϵh = ϵ[trunc(ind .+ s .- 1, T)]
-        ϵh = [ϵ[h]; -ϵh]
+        ϵh = [ϵh; -ϵh]
 
         Q[:, hh] = out[hh] .+ quantile(ϵh, quant)
     end
