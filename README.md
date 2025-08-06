@@ -322,7 +322,7 @@ mae_score = score(forecast_result, MAE())
 > 
 >$$x_t = w(z_{t-1}) + r(z_{t-1})\epsilon_t$$
 >
->$$- z_t = f(z_{t-1}) + g(z_{t-1})\epsilon_t$$
+>$$z_t = f(z_{t-1}) + g(z_{t-1})\epsilon_t$$
 >
 >where $$z_t$$ is the state vector.
 >
@@ -398,10 +398,65 @@ mae_score = score(forecast_result, MAE())
 
 BaselineModels.jl provides four approaches to prediction interval construction:
 
-- **EmpiricalInterval**: Bootstrap resampling from historical forecast errors
-- **ParametricInterval**: Model-specific analytical prediction intervals
-- **ModelTrajectoryInterval**: Simulation-based intervals using model trajectories
-- **NoInterval**: Point forecasts only
+<details>
+<summary><b>NoInterval</b>: Point forecasts only</summary><br>
+
+>No intervals or trajectories are returned
+>
+>Does not require settings
+</details>
+
+<details>
+<summary><b>Empirical Interval</b>: Bootstrap resampling from historical forecast errors</summary><br>
+
+>Uses historic forecast errors to sample forecast trajectories.
+>
+><ins>Settings</ins>
+>
+>- `n_trajectories`: Number of trajectories to be sampled
+>- `min_observation`: Minimum number of observations needed in each historic fit
+>- `bootstrap_distribution`: Distribution to fit to historic forecast error (for example `Normal()`), or `nothing` if trajectories are sampled from forecast errors directly
+>- `seed`: Random seed for reproducibility or `nothing` if no seed to be set
+>- `positivity_correction`: Shall lower bounds be truncated at zero?
+>    * `:none`: No correction
+>    * `:post_clip`: Set negative values to zero after complete trajectory sampling
+>    * `truncate`: Sample from a truncated distribution
+>    * `:zero_clip`: Censor negative samples at zero during sampling
+>- `symmetry_correction`: Use forecasts of both signs to ensure zero mean/median?
+>- `stepwise`: If set to true, one-step-ahead forecast errors are used successively. Otherwise, corresponding h-step-ahead forecast errors are used
+>- `return_trajectories`: If set to false (default), trajectories are not returned to save memory
+</details>
+
+<details>
+<summary><b>ParametricInterval</b>: Model-specific analytical prediction intervals</summary><br>
+
+>Computes intervals analytically, if formulae are available. Trajectories are never computed.
+>
+><ins>Settings</ins>
+>
+>- `positivity_correction`: Shall lower bounds be truncated at zero?
+>    * `:none`: No correction
+>    * `:post_clip`: Set negative values to zero after complete trajectory sampling
+</details>
+
+<details>
+<summary><b>ModelTrajectory</b>: Simulation-based intervals</summary><br>
+    
+>Trajectories are computed by running fitted model into the future.
+>
+><ins>Settings</ins>
+>
+>- `n_trajectories`: Number of trajectories to be sampled
+>- `seed`: Random seed for reproducibility or `nothing` if no seed to be set
+>- `positivity_correction`: Shall lower bounds be truncated at zero?
+>    * `:none`: No correction
+>    * `:post_clip`: Set negative values to zero after complete trajectory sampling
+>    * `truncate`: Sample from a truncated distribution
+>    * `:zero_clip`: Censor negative samples at zero during sampling
+>- `return_trajectories`: If set to false (default), trajectories are not returned to save memory
+>Text
+>
+</details>
 
 ```julia
 # Empirical intervals (model-agnostic)
