@@ -6,7 +6,7 @@ using StatsBase: sample, wsample
 
 include("Types.jl")
 include("ForecastUtils.jl")
-include("Intervalmethods.jl")
+include("IntervalMethods.jl")
 include("HistoricalForecastErrors.jl")
 
 include("EmpiricalInterval.jl")
