@@ -16,8 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
-          - '1.9'
+          - '1.9'  # Remove 1.6, start with 1.9
+          - '1.10'
           - 'nightly'
         os:
           - ubuntu-latest
