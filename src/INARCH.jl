@@ -14,10 +14,10 @@ conditional mean with optional seasonality and overdispersion.
 - `nb::Bool`: Use negative binomial distribution instead of Poisson (default: false)
 
 # Mathematical Model
-λ_t = β₀ + ∑_{i=1}^p α_i X_{t-i} + seasonal_component_t
+λ_t = (β₀ + ∑_{i=1}^p α_i (Y_{t-i}/seasonal_component_{t+i})) seasonal_component_t
 
 where:
-- X_t ~ Poisson(λ_t) or NegativeBinomial(λ_t, ϕ) if nb=true
+- Y_t ~ Poisson(λ_t) or NegativeBinomial(λ_t, ϕ) if nb=true
 - λ_t is the conditional mean (intensity)
 - Seasonal component uses harmonic functions when s > 0
 

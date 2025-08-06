@@ -14,8 +14,8 @@ Historic prediction errors are used either directly or to fit error distribution
 # Fields
 - `n_trajectories::Int`: Number of trajectory samples to generate
 - `min_observation::Int`: Minimum number of observations needed in each historic fit
-- `bootstrap_distribution::Union{ContinuousUnivariateDistribution, Symbol}`: Distribution to fit to historic prediction errors
-        or `nothing` if histtoric forecast errors should be used directly. If a distribution is provided, it must have
+- `bootstrap_distribution::Union{ContinuousUnivariateDistribution, Nothing}`: Distribution to fit to historic prediction errors
+        or `nothing` if historic forecast errors should be used directly. If a distribution is provided, it must have
         `fit(d, x)` implemented.
 - `seed::Union{Int, Nothing}`: Random seed for reproducibility
 - `positivity_correction::Symbol`: Shall lower bounds be truncated at zero? (:none, :post_clip, :truncate or :zero_floor)
@@ -24,7 +24,7 @@ Historic prediction errors are used either directly or to fit error distribution
     * `:truncate`: Truncates the sampling distribution at zero during sampling of trajectories
     * `:zero_floor`: Sets negative samples to zero in trajectories
 - `symmetry_correction::Bool`: Use forecast errors of both signs?
-- `stepwise::Bool`: Use only one-step-ahead of corresponding h-step-ahead forecast errors?
+- `stepwise::Bool`: Use successive one-step-ahead or corresponding h-step-ahead forecast errors?
 - `return_trajectories::Bool`: Returns `nothing` as trajectory if set to `true`
 """
 struct EmpiricalInterval <: AbstractIntervalMethod
@@ -41,7 +41,6 @@ struct EmpiricalInterval <: AbstractIntervalMethod
         new(n_trajectories, min_observation, bootstrap_distribution, seed, positivity_correction, symmetry_correction, stepwise, return_trajectories)
     end
 end
-
 # Below two methods are model specific
 
 """
