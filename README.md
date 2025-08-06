@@ -1,69 +1,519 @@
-## File summary:
-- ImportBaselines.jl: Loads packages, defines Baseline type and reads in models/functions. (Will be replaced by module definition later)
-- forecast.jl: Object type to store forecasts. Contains:
-  - `horizon`: Vector of forecast horizon(s)
-  - `mean`: Vector of point forecasts
-  - `median`: Vector of median forecasts
-  - `interval`: Vector of interval forecasts (one element per horizon). Each of type `forecastInterval`
-  - `truth`: Vector of observed data matching horizon(s)
-  - `trajectory`: If sample-based forecast, matrix of trajectories
+# BaselineModels.jl
 
-- scoring.jl Functions to evaluate forecasts (of type forecast) Currently: WIS & quantile-based CRPS
-- Seasonality.jl: Functions to remove seasonality from time series and add back to forecast after fitting filtered time series
+A comprehensive Julia package for baseline forecasting methods.
 
+## Overview
 
-## Models
+BaselineModels.jl provides a framework for time series forecasting. The package implements a collection of baselines and established forecasting methods with a consistent interface across all models.
 
-For each of the models below, the methods are implemented through the following types and methods.
+### Key Features
 
-Types: 
-- `modelnameModel`: Type to define the model settings
-- `modelnameParameter`: Type to store estimated parameters
-- `modelnameFitted`: Type to store fitted models. Contains the time series, the model and estimated parameters
+- **Unified Interface**: Consistent API across all forecasting methods, from simple baselines to sophisticated time series models
+- **Uncertainty Quantification**: Multiple approaches for generating prediction intervals, including empirical, parametric, and simulation-based methods
+- **Data Preprocessing**: Built-in support for transformations and seasonal-trend decomposition
+- **Model Evaluation**: Scoring rules and calibration assessment tools
 
-Methods:
-- `fit`: Takes a time series `x` and a model `modelnameModel` and returns a `modelnameFitted` object
-- `predict`: Takes a fitted model, maximum horizon `h` and quantiles `quant` and returns a forecasst object. Currently truth data is not stored, but can be added by `addTruth()`.
+## Installation
 
-### Constant - Last available observation
+```julia
+using Pkg
+Pkg.add("https://github.com/ManuelStapper/BaselineModels.jl")
+```
 
-For a time series, $x_1, ..., x_T$, the constant models predicts $\hat{x}_{T+h|T} = x_T$. Forecsat intervals are computed by drawing from past $h$-step ahead forecast errors. If the model setting `isPos` is set to `true`, forecast intervals are truncated at zero.
+## Basic Usage
 
-### Marginal: Forecasting from marginal distribution
+```julia
+using BaselineModels
 
-The marginal model has two argumets to be set: `isPos` is set to `true` to truncate forecast intervals at zero, `p` is a smoothness or memory coefficient. It gives the number of most recent observations used to estimate the marginal mean, which is then used as forecast:
-$$
-    \hat{x}_{T+h|T} = \frac{1}{p}\sum_{i = 1}^{p} x_{T - i + 1}
-$$
-Forecast intervals are computed by sampling from past `h`-step ahead forecast errors.
+# Fit an ARMA model to time series data
+model = ARMAModel(p=2, q=1)
+fitted = fit_baseline(data, model)
 
-### LSD - Last similar date
+# Generate forecasts with prediction intervals
+forecast_result = forecast(fitted,
+    interval_method = EmpiricalInterval(),
+    horizon = 1:12,
+    levels = [0.8, 0.95]
+)
 
-The last similar date model is a generalisation of the marginal model that allows for seasinality. Apart from `isPos`, the model is defined through `S` and `w`, where `S` gives the integer-values periodicity and `w` is the window size. If `w = 0`, the model forecasts the future as average of all observations with the same intra-season time (week of the year / day of the week / ...). For large periodicity and short time series, `w` can be set to include similar dates in the estimation as well. Forecast intervals are computed by sampling from past $h$-step ahead forecast errors. 
+# Evaluate forecast accuracy
+mae_score = score(forecast_result, MAE())
+```
 
-### OLS - Polynomial regression
+## Implemented Methods
 
-The OLS model is specified by `isPos`, `p` and `d` where `d` gives the polynomial order of a regression model that is fit on the past `p` observations. Point forecasts are then the computed through the fitted regression equation. Forecast intervals are derived through past forecast errors, not assuming gaussian errors.
+### Models
 
-### IDS - Increase-Decrease-Stable
+<details>
+<summary><b>ConstantModel</b> - Naïve forecasts using the last observed value</summary><br>
 
-The IDS model is similar to the OLS model, it is defined through `p` and `isPos`. The model is an OLS model, that is fit on the past `p` observations. If those observations are all monotonically decreasing or increasing, the OLS model includes a trend and nbo trend otherwise. Forecast intervals are computed through past forecast errors.
+><ins>Model Formulation</ins>
+>
+>The model simply predicts the last observed value into the future.
+>
+><ins>Architecture</ins>
+> 
+>No settingsrequired
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `μ` | Last observation |
+>
+><ins>Estimation settings</ins>
+> 
+>No settings required
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ❌ `ParametricInterval()`<br>
+>  ❌ `ModelTrajectoryInterval()`
+</details>
 
-### ARMA(p, q) with flexible seasonality
+<details>
+<summary><b>MarginalModel</b> - Forecasts based on empirical marginal distribution</summary><br>
 
-The model is defined by the AMRA orders `p` and `q`, `isPos` and the seasonality structure. The seasonality is specified by a function `µ` that has the time and a parameter vector as input. In addition `µDim` gives the dimension of the parameter vector. The model is fit by Maximum Likelihood. The seasonality is subtracted from the time series and an INARMA($p$, $q$) with mean zero is fit. The default seasonality is a constant intercept.
-To simplify model definition, users may use the constructor `armaModel(p, q; m, trend)`, which defines a model with simple sine-cosine seasonality of periodicity `m` and may further include a trend. 
+><ins>Model Formulation</ins>
+>
+>The model takes the most recent p observations to estimate the marginal mean.
+>
+><ins>Architecture</ins>
+> 
+>- `p`: Number of observations
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `μ` | Marginal mean |
+>
+><ins>Estimation settings</ins>
+> 
+>- `estimation_function`: Function that estimates the marginal mean from data (default: mean)
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ✅ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
 
-### INGARCH - Integer-Values GARCH
+<details>
+<summary><b>KDEModel</b> - Kernel density estimation for non-parametric forecasting</summary><br>
 
-The integer-values counterpart of a GARCH process is defined by `p`, `m` and `nb`. `p` gives the "AR-order", the "MA-order" is always zero. `m` gives the periodicity, which is one by default, i.e. no seasonality. The conditional distribution is seleted by `nb`, such that a Poisson distribution is assumed if set to `false` and a Negative Binomial if it is `true`. The model is only applicable if the time series is integer-values and non-negative. 
+><ins>Model Formulation</ins>
+>
+>The density of the marginal distribution is estimated as
+>
+>$$\hat{f}(y) = \frac{1}{Th} \sum_{t = 1}^T K\left(\frac{y - y_t}{h}\right)
+>
+>where K is a kernel and h is the bandwidth.
+>
+><ins>Architecture</ins>
+> 
+>No settings required
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `x_seq` | sequence of nodes |
+>| `density` | density at nodes |
+>
+><ins>Estimation settings</ins>
+> 
+>- `bandwidth_selection`: Bandwidth selection method (function) or fixed value
+>- `kernel`: Kernel distribution type (default: Normal()) 
+>- `npoints::Int`: Number of grid points for density evaluation (default: 2048)
+>- `boundary`: Boundary handling method or fixed boundaries
+>- `weights`: Observation weights method or fixed weights
+>
+>For details, see [KernelDensity.jl](https://github.com/JuliaStats/KernelDensity.jl)
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ✅ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
 
-### ETS - Exponential Smoothing Error-Trend-Seasonality
+<details>
+<summary><b>LSDModel</b> - Last Similar Dates method for seasonal patterns</summary><br>
 
-An ETS model can be defined by setting `error`, `trend`, `season` and `m`. Is is an exponential smoothing decopmposition of the time series into error trend and season. The `error` type can be either additive (`error = "A"`) or multiplicative (`error = "M"`). The `trend`can be additive (`"A"`), Multiplicative (`"M"`), or damped versions thereof (`"Ad"` and `"Md"`), or none (`"N"`). Similarly, the `season` can be additive (`"A"`), multiplicative (`"M"`) or none (`"N"`). If seasonality is selected, the periodicity can be specified by `m`. 
-For details, see the R-package `forecast`.
+><ins>Model Formulation</ins>
+>
+>The model estimates the means of periods for a seasonal time series. For estimation, the model takes not only observations of corresponding periods but also neighbouring observations ($$\pm w$$).
+>
+><ins>Architecture</ins>
+> 
+>- `s`: Periodicity
+>- `w`: Window width
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `μ` | Vector of means |
+>
+><ins>Estimation settings</ins>
+> 
+>- `estimation_function`: Function that estimates the marginal mean from data (default: mean)
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ❌ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
 
-### STL: Seasonality-Trend decomposition with LOESS
+<details>
+<summary><b>OLSModel</b> - Ordinary least squares with polynomial trends</summary><br>
 
-Similar to the ETS model, the STL decomposes the time series into seasonality, trend and remainder. Important to select is the periodicity `p`. The remaining model coefficients `i`, `o`, `l`, `t` and `s` are smoothing coefficients and settings for the algorithm.
-Disclaimer: Will be changed in the future to have reasonable default values and removed from the settings.  
+><ins>Model Formulation</ins>
+>
+>Linear regression model with polynomial time trend of order d fitted to p most recent obervations
+>
+>$$y_t = \beta_0 + \beta_1 t + ... + \beta_d t^d + \epsilon_t$$
+>
+><ins>Architecture</ins>
+> 
+>- `p`: Number of observations
+>- `d`: Order of time trend polynomial
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `β` | Parameter vector |
+>
+><ins>Estimation settings</ins>
+> 
+>No settings required
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ✅ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
+
+<details>
+<summary><b>IDSModel</b> - Increase-Decrease-Stable trend detection</summary><br>
+
+><ins>Model Formulation</ins>
+>
+>Fits an OLS model to the p most recent observations. If all observations go into the same direction (increase/decrease), it contains a linear trend and reduces to an intercept model otherwise (stable).
+>
+><ins>Architecture</ins>
+> 
+>- `p`: Number of observations
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `a` | Intercept |
+>| `b` | Slope |
+>
+><ins>Estimation settings</ins>
+> 
+>No settings required
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ✅ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
+
+<details>
+<summary><b>ARMAModel</b>: Autoregressive Moving Average processes</summary><br>
+  
+><ins>Model Formulation</ins>
+>
+>The ARMA(p, q) model follows the specification:
+>  
+>$$X_t - \mu_t = \epsilon_t + \sum_{i=1}^p \alpha_i (X_{t-i} - \mu_{t-i}) + \sum_{i=1}^q \beta_i \epsilon_{t-i}$$
+>
+>where $\mu_t = \mu(\theta, t)$ is a deterministic trend/seasonal function.
+>
+><ins>Architecture</ins>
+> 
+>- **`p`, `q`**: Model orders (autoregressive and moving average)
+>- **`μ`**: Mean function `μ(θ, t)` where `θ` are parameters and `t` is time
+>- **`μDim`**: Number of parameters in the mean function
+>
+>Users can specify `s` (periodicity) and `trend` (Boolean) instead of custom mean functions for convenience.
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `α` | Autoregressive coefficients [α₁, α₂, ..., αₚ] |
+>| `β` | Moving average coefficients [β₁, β₂, ..., βₑ] |
+>| `μ` | Mean function parameters |
+>| `σ²` | Innovation variance (≥ 0) |
+>
+><ins>Estimation settings</ins>
+> 
+>- `ensure_stability` - constrains for stationarity/invertibility
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ✅ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
+
+<details>
+<summary><b>INARCHModel</b> - Integer-valued ARCH for count time series</summary><br>
+
+><ins>Model Formulation</ins>
+>
+>INARCH(p) model with optional seasonality, either Poisson or Negative Bionomial (conditional) distribution with mean
+>
+>$$\lambda_t = \mu_t(\beta_0 + \sum_{i = 1}^p (y_{t-i}/\mu_{t-i}))$$
+>
+>where $$\mu_t$$ is the seasonality component, $$\log(\mu_t)$$ is a harmonic wave of order k.
+>
+><ins>Architecture</ins>
+>
+>- `p`: Autoregressive order (default: 1)
+>- `s`: Periodicity (default: 0, i.e. no seasonality)
+>- `k`: Order of harmonic waves (default: 1)
+>- `nb`: Negative Binomial distribution? (default: false)
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `β0` | Intercept |
+>| `α` | Autoregressive parameters |
+>| `ϕ` | Overdispersion parameter |
+>| `γ` | Seasonality parameters |
+>
+><ins>Estimation settings</ins>
+> 
+>No settings required
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ❌ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
+
+<details>
+<summary><b>ETSModel</b> - Error-Trend-Season exponential smoothing (all 30 variants)</summary><br>
+
+><ins>Model Formulation</ins>
+>
+>Exponential smoothing, decomposition into error, trend and seasonality. Errors can be additive or multiplicative. Seasonality can additionally be none. Trend component can be damped, if included in the model. All model variants can be summarised in state-space form
+> 
+>$$x_t = w(z_{t-1}) + r(z_{t-1})\epsilon_t$$
+>
+>$$- z_t = f(z_{t-1}) + g(z_{t-1})\epsilon_t$$
+>
+>where $$z_t$$ is the state vector.
+>
+><ins>Architecture</ins>
+>
+>- `error`: Error type
+>- `season`: Seasonality type (including periodicity s)
+>- `trend`: Trend type
+>
+>For convenience, a constructor is implemented that takes
+>
+>- `error`: `"A"` or `"M"` for additive or multiplicative errors respectively
+>- `season`: `"A"`, `"M"` or `"N"` (where `"N"` = no seasonality)
+>- `s`: Periodicity
+>- `trend`: `"A"`, `"Ad"`, `"M"`, `"Md"` or `"N"` (where `"Ad"` and `"Md"` are damped additive/multiplicative trends)
+> 
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `θ` | Smoothing coefficients |
+>| `z0` | Initial state |
+>
+><ins>Estimation settings</ins>
+> 
+>No settings required
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ❌ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
+
+<details>
+<summary><b>STLModel</b> - Seasonal-Trend decomposition using Loess</summary><br>
+
+><ins>Model Formulation</ins>
+>
+>For details, see [Paper](https://www.nniiem.ru/file/news/2016/stl-statistical-model.pdf)
+>
+><ins>Architecture</ins>
+>
+>- `s`: Periodicity
+>
+><ins>Parameters</ins>
+>
+>| Parameter | Description |
+>|-----------|-------------|
+>| `S` | Seasonality terms |
+>| `T` | Trend terms |
+>| `R` | Remainder terms |
+>
+><ins>Estimation settings</ins>
+> 
+>- `ni`: Number of inner loops
+>- `no`: Number of outer loops
+>- `ns`: Smoothing coefficient for seasonality term
+>- `nt`: Smoothing coefficient for trend term
+>- `nl`: Smoothing coefficient for Loess
+>- `s`: Periodicity
+>
+><ins>Supported intervals</ins>
+>  
+>  ✅ `NoInterval()`<br>
+>  ✅ `EmpiricalInterval()`<br>
+>  ❌ `ParametricInterval()`<br>
+>  ✅ `ModelTrajectoryInterval()`
+</details>
+
+## Uncertainty Quantification
+
+BaselineModels.jl provides four approaches to prediction interval construction:
+
+- **EmpiricalInterval**: Bootstrap resampling from historical forecast errors
+- **ParametricInterval**: Model-specific analytical prediction intervals
+- **ModelTrajectoryInterval**: Simulation-based intervals using model trajectories
+- **NoInterval**: Point forecasts only
+
+```julia
+# Empirical intervals (model-agnostic)
+fc1 = forecast(fitted, interval_method=EmpiricalInterval())
+
+# Parametric intervals (model-specific)
+fc2 = forecast(fitted, interval_method=ParametricInterval())
+
+# Trajectory-based intervals
+fc3 = forecast(fitted, interval_method=ModelTrajectoryInterval(n_trajectories=5000))
+```
+
+## Data Preprocessing
+
+The package supports data preprocessing through transformations and seasonal-trend decomposition:
+
+```julia
+# Apply transformations for non-normal data
+log_model = transform(ARMAModel(p=1, q=1), transformation=LogTransform())
+
+# Seasonal-trend preprocessing
+seasonal_model = transform(ConstantModel(),
+                          season_trend=STTransform(s=12, trend=true))
+```
+
+Available transformations include logarithmic, power/Box-Cox, and square root transformations. Seasonal-trend decomposition uses harmonic functions to capture periodic patterns.
+
+## Model Evaluation
+
+BaselineModels.jl implements scoring rules for forecast evaluation and tools to assess calibration:
+
+### Point Forecast Accuracy
+- Mean Absolute Error (MAE), Root Mean Square Error (RMSE)
+- Mean Absolute Percentage Error (MAPE), bias measures
+
+### Probabilistic Forecast Quality
+- Weighted Interval Score (WIS)
+- Continuous Ranked Probability Score (CRPS)
+- PIT function
+- Cramér-von-Mises divergence of PIT function
+
+(To be extended)
+
+```julia
+# Evaluate point forecasts
+mae = score(forecasts, MAE())
+rmse = score(forecasts, RMSE())
+
+# Evaluate probabilistic forecasts
+wis = score(forecasts, WIS())
+crps = score(forecasts, CRPS())
+
+# Assess calibration
+calibration = CvM_divergence(forecasts)
+```
+
+## Examples
+
+### Seasonal Data Analysis
+```julia
+# Fit ETS model to monthly data with seasonality
+model = ETSModel(error="A", trend="A", season="A", s=12)
+fitted = fit_baseline(monthly_data, model)
+
+fc = forecast(fitted,
+             interval_method=ModelTrajectoryInterval(n_trajectories=2000),
+             horizon=1:24)
+```
+
+### Model Comparison
+```julia
+models = [ARMAModel(p=2, q=1), ETSModel(error="A", trend="A", season="N")]
+forecasts = [forecast(fit_baseline(data, m), horizon=1:12) for m in models]
+accuracies = [score(fc, MAE()) for fc in forecasts]
+```
+
+### Count Data Modelling
+```julia
+# INARCH model for integer-valued time series
+model = INARCHModel(p=2, s=7, nb=true)  # Weekly seasonality with overdispersion
+fitted = fit_baseline(count_data, model)
+fc = forecast(fitted, horizon=1:14)
+```
+
+## Documentation
+
+Documentation is available through Julia's help system:
+
+```julia
+?ARMAModel
+?forecast
+?score
+```
+
+(More details to be added)
+
+## Contributing
+
+Contributions are welcome through issues and pull requests.
+
+## Citation
+
+```bibtex
+@software{BaselineModels.jl,
+  author = {Manuel Stapper},
+  title = {BaselineModels.jl: Baseline Forecasting Methods in Julia},
+  url = {https://github.com/ManuelStapper/BaselineModels.jl},
+  version = {0.1.0},
+  year = {2025}
+}
+```
+
+## Licence
+
+This package is distributed under the MIT Licence. See the LICENCE file for details.
