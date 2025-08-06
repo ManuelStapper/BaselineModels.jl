@@ -556,6 +556,7 @@ Documentation is available through Julia's help system:
 ## Contributing
 
 Contributions are welcome through issues and pull requests.
+To add models, see also ModelTemplate.jl
 
 ## Citation
 
