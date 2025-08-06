@@ -2,93 +2,282 @@
 ### Extrapolation Model ###
 ###########################
 
-# Idea: If the last 3 observations "go into the same direction",
-#       forward that trend by fitting an OLS
-#       Otherwise, return constant forecast
+"""
+    IDSModel(;p::Int = 3)
 
-struct idsModel <: Baseline
-    p::Int64
-    isPos::Bool
-    function idsModel(p::Int64 = 3, isPos::Bool = true)
-        new(p, isPos)
+Increase-Decrease-Stable model for trend-aware forecasting.
+
+Adaptive forecasting method that detects trend consistency in recent observations
+and applies linear extrapolation only when a clear directional pattern exists.
+Otherwise reverts to constant (mean) forecasting.
+
+# Fields
+- `p::Int`: Number of recent observations to analyse for trend detection (default: 3)
+
+# Algorithm Logic
+1. **Trend Detection**: Examine signs of differences in last p observations
+2. **Consistency Check**: If all differences have the same sign, trend detected
+3. **Forecasting Strategy**:
+   - **Trend detected**: Fit linear trend and extrapolate
+   - **No trend**: Use mean of recent observations (constant forecast)
+"""
+struct IDSModel <: AbstractBaselineModel
+    p::Int
+    function IDSModel(;p::Int = 3)
+        (p > 0) || throw(ArgumentError("`p` must be positive"))
+        new(p)
     end
 end
 
-mutable struct idsParameter
-    a::T where {T <: Real} # Intercept
-    b::T where {T <: Real} # Slope
+"""
+    IDSParameter(a::Real, b::Real)
+
+Parameters for fitted IDS model.
+
+# Fields
+- `a::Float64`: Intercept parameter (level component)
+- `b::Float64`: Slope parameter (trend component, 0 if no trend detected)
+
+When no trend is detected, a = mean of recent observations and b = 0.
+When trend is detected, (a,b) are OLS estimates from linear regression.
+"""
+struct IDSParameter <: AbstractModelParameters
+    a::Float64
+    b::Float64
+    function IDSParameter(a, b)
+        ((a isa Real) & (b isa Real)) || throw(ArgumentError("Parameters must be real numbers"))
+        new(Float64(a), Float64(b))
+    end
 end
 
-mutable struct idsFitted
-    x::Vector{T} where {T <: Real}
-    model::idsModel
-    par::idsParameter
+"""
+    IDSEstimationSetting()
+
+Estimation settings for IDS model.
+
+Empty struct as IDS uses simple deterministic rules rather than
+statistical estimation. Included for interface consistency.
+"""
+struct IDSEstimationSetting <: AbstractEstimationSetting
 end
 
-# Notation: Last observation has time index 0 for regression
-function fit(x::Vector{T},
-             model::idsModel) where {T <: Real}
-    #
-    y = x[end-model.p + 1:end]
+"""
+    IDSFitted
+
+Container for fitted IDS model.
+
+# Fields
+- `x::Vector{Float64}`: Original time series data
+- `model::IDSModel`: Model specification  
+- `par::IDSParameter`: Estimated parameters
+- `estimation_setting::IDSEstimationSetting`: Settings used
+- `temporal_info::TemporalInfo`: Temporal metadata
+"""
+struct IDSFitted <: AbstractFittedModel
+    x::Vector{Float64}
+    model::IDSModel
+    par::IDSParameter
+    estimation_setting::IDSEstimationSetting
+    temporal_info::TemporalInfo
+    function IDSFitted(x, model::IDSModel, par::IDSParameter,
+        estimation_setting::IDSEstimationSetting,
+        temporal_info::TemporalInfo = TemporalInfo())
+        #
+        if !(x isa Vector{Float64})
+            x = Float64.(x)
+        end
+        new(x, model, par, estimation_setting, temporal_info)
+    end
+end
+
+"""
+    fit_baseline(x::Vector{T}, model::IDSModel;
+                setting::Union{IDSEstimationSetting, Nothing} = IDSEstimationSetting(),
+                temporal_info::TemporalInfo = TemporalInfo()) -> IDSFitted
+
+Fit IDS model using trend detection and conditional estimation.
+
+# Arguments
+- `x::Vector{T}`: Time series data where T <: Real
+- `model::IDSModel`: IDS model specification
+- `setting`: Estimation settings (optional, no effect)
+- `temporal_info`: Temporal metadata (optional)
+
+# Returns
+- `IDSFitted`: Fitted model with conditional parameters
+
+# Fitting Process
+1. **Extract Recent Data**: Use last min(p, length(x)) observations
+2. **Compute Differences**: Calculate period-to-period changes
+3. **Check Trend Consistency**: Verify all differences have same sign
+4. **Conditional Estimation**:
+   - **Trend detected**: OLS regression on recent data
+   - **No trend**: Simple mean calculation
+
+# Implementation Notes
+- Uses OLS implementation internally when trend detected
+- Automatically handles cases where p > length(x)
+"""
+function fit_baseline(x::Vector{T},
+        model::IDSModel;
+        setting::Union{IDSEstimationSetting, Nothing} = IDSEstimationSetting(),
+        temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
+    
+    p = minimum([model.p, length(x)])
+    y = x[end-p + 1:end]
     s = sign.(diff(y))
     if length(unique(s)) == 1
-        X = [ones(model.p) 1 - model.p:0]
+        X = [ones(p) 1 - p:0]
         β = inv(X'X)*X'y
-        par = idsParameter(β[1], β[2])
+        par = IDSParameter(β[1], β[2])
     else
-        par = idsParameter(mean(y), 0)
+        par = IDSParameter(mean(y), 0)
     end
-    idsFitted(x, model, par)
+
+    if isnothing(setting)
+        setting = IDSEstimationSetting()
+    end
+    IDSFitted(x, model, par, setting, temporal_info)
 end
 
-function predict(fit::idsFitted,
-                 h::Int64,
-                 quant::Vector{Float64})
-    #
-    out = fit.par.a .+ fit.par.b .* collect(1:h)
-    quant = sort(unique(round.([quant; 1 .- quant; 0.5], digits = 4)))
+"""
+    point_forecast(fitted::IDSFitted, horizon::Union{Vector{Int}, Int, UnitRange{Int}}) -> Vector{Float64}
 
-    # For prediction errors, use previous h-step-ahead errors
-    T = length(fit.x)
-    p = fit.model.p
+Generate point forecasts using conditional trend extrapolation.
 
-    ϵ = zeros(T - p - h, h)
-    for i = 1:T - h - p
-        xx = fit.x[i:i+p-1]
+# Arguments
+- `fitted::IDSFitted`: Fitted IDS model
+- `horizon`: Forecast horizons
 
-        s = sign.(diff(xx[end-p+1:end]))
-        y = fit.x[end-p + 1:end]
+# Returns
+- `Vector{Float64}`: Point forecasts
 
-        if length(unique(s)) == 1
-            X = [ones(p) 1 - p:0]
-            β = inv(X'X)*X'y
-        else
-            β = [mean(y), 0]
-        end
+# Forecasting Logic
+Uses the fitted linear model parameters regardless of trend detection:
+- X̂_{T+h} = a + b × h for all h > 0
 
-        fc = β[1] .+ β[2] .* (1:h)
-        ϵ[i, :] = fit.x[i + p:i + p + h - 1] .- fc
+When no trend was detected (b = 0), this reduces to constant forecasting.
+When trend was detected (b ≠ 0), this extrapolates the linear pattern.
+
+This continues the fitted linear relationship into the future, where:
+- a captures the level component
+- b captures the trend component (zero if no trend detected)
+
+# Example
+```julia
+# Generate forecasts
+forecasts = point_forecast(fitted, 1:5)
+
+# For trending series: forecasts show linear growth
+# For non-trending series: forecasts are constant
+```
+"""
+function point_forecast(fitted::IDSFitted,
+        horizon::Union{Vector{Int}, Int, UnitRange{Int}})
+    if horizon isa Int
+        horizon = collect(1:horizon)
     end
-    ϵ = [ϵ; -ϵ]
+    if horizon isa UnitRange{Int}
+        horizon = collect(horizon)
+    end
+
+    all(horizon .> 0) || throw(ArgumentError("Horizons must be non-negative."))
+    length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
     
-    Q = zeros(length(quant), h)
-    for hh = 1:h
-        for q = 1:length(quant)
-            Q[q, hh] = out[hh] + quantile(ϵ[:, hh], quant[q])
-        end
+    p = minimum([fitted.model.p, length(fitted.x)])
+    y = fitted.x[end-p + 1:end]
+    s = sign.(diff(y))
+
+    # Use OLS model implementation for forecasts
+    ols_model = OLSModel(p = p, d = 1)
+    ols_par = OLSParameter([fitted.par.a, fitted.par.b])
+    ols_fitted = OLSFitted(fitted.x, ols_model, ols_par, OLSEstimationSetting(),
+        fitted.temporal_info)
+    point_forecast(ols_fitted, horizon)
+end
+
+# Parametric forecast intervals
+"""
+    interval_forecast(fitted::IDSFitted, method::ParametricInterval, ...) -> Tuple
+
+Generate parametric prediction intervals using OLS framework.
+
+Converts IDS parameters to equivalent OLS model and applies standard
+linear regression interval formulas. Provides analytical prediction
+intervals when parametric approach is preferred.
+
+Delegates to OLS interval computation after parameter transformation.
+"""
+function interval_forecast(fitted::IDSFitted,
+    method::ParametricInterval,
+    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+    levels::Vector{Float64} = [0.95];
+    alpha_precision::Int = 10,
+    include_median::Bool = true)
+
+    if horizon isa Int
+        horizon = collect(1:horizon)
+    end
+    if horizon isa UnitRange{Int}
+        horizon = collect(horizon)
     end
 
-    if fit.model.isPos
-        Q[Q .< 0] .= 0
+    # Validate input:
+    all(0 .< levels .< 1.0) || throw(ArgumentError("Levels must be between 0 and 1"))
+    all(horizon .> 0) || throw(ArgumentError("Horizons must be positive"))
+    length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
+
+    p = minimum([fitted.model.p, length(fitted.x)])
+    y = fitted.x[end-p + 1:end]
+    s = sign.(diff(y))
+
+    # Use OLS model implementation for forecasts
+    ols_model = OLSModel(p = p, d = 1)
+    ols_par = OLSParameter([fitted.par.a, fitted.par.b])
+    ols_fitted = OLSFitted(fitted.x, ols_model, ols_par, OLSEstimationSetting(),
+        fitted.temporal_info)
+    interval_forecast(ols_fitted, method, horizon, levels,
+        alpha_precision = alpha_precision, include_median = include_median)
+end
+
+"""
+    interval_forecast(fitted::IDSFitted, method::ModelTrajectoryInterval, ...) -> Tuple
+
+Generate trajectory-based prediction intervals using OLS simulation.
+
+Converts IDS parameters to equivalent OLS model and applies trajectory
+sampling methodology.
+
+Delegates to OLS trajectory generation after parameter transformation.
+"""
+function interval_forecast(fitted::IDSFitted,
+    method::ModelTrajectoryInterval,
+    horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+    levels::Vector{Float64} = [0.95];
+    alpha_precision::Int = 10,
+    include_median::Bool = true)
+
+    if horizon isa Int
+        horizon = collect(1:horizon)
+    end
+    if horizon isa UnitRange{Int}
+        horizon = collect(horizon)
     end
 
-    interval = forecastInterval[]
-    for hh = 1:h
-        ls = Q[1:Int64((size(Q)[1] - 1)/2), hh]
-        us = reverse(Q[Int64((size(Q)[1] - 1)/2) + 2:end, hh])
-        αs = quant[1:Int64((size(Q)[1] - 1)/2)]*2
-        push!(interval, forecastInterval(αs, ls, us))
-    end
+    # Validate input:
+    all(0 .< levels .< 1.0) || throw(ArgumentError("Levels must be between 0 and 1"))
+    all(horizon .> 0) || throw(ArgumentError("Horizons must be positive"))
+    length(horizon) .> 0 || throw(ArgumentError("Valid forecast horizons must be provided."))
 
-    return forecast(1:h, mean = out, median = out, interval = interval)
+    p = minimum([fitted.model.p, length(fitted.x)])
+    y = fitted.x[end-p + 1:end]
+    s = sign.(diff(y))
+
+    # Use OLS model implementation for forecasts
+    ols_model = OLSModel(p = p, d = 1)
+    ols_par = OLSParameter([fitted.par.a, fitted.par.b])
+    ols_fitted = OLSFitted(fitted.x, ols_model, ols_par, OLSEstimationSetting(),
+        fitted.temporal_info)
+    interval_forecast(ols_fitted, method, horizon, levels,
+        alpha_precision = alpha_precision, include_median = include_median)
 end

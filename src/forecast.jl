@@ -1,126 +1,118 @@
-# Data type to store forecasts and observed values
+"""
+    forecast(fitted::AbstractFittedModel;
+             interval_method::AbstractIntervalMethod = NoInterval(),
+             horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+             levels::Vector{Float64} = [0.95],
+             alpha_precision::Int = 10,
+             include_median::Bool = true,
+             truth::Union{Vector{Float64}, Nothing} = nothing,
+             model_name::String = "") -> Forecast
 
-mutable struct forecastInterval
-    α::Vector{T1} where {T1 <: Real}
-    l::Vector{T2} where {T2 <: Real}
-    u::Vector{T3} where {T3 <: Real}
-    function forecastInterval(α, l, u)
-        if !(typeof(α) <: Vector)
-            α = [α]
-        end
-        if !(typeof(l) <: Vector)
-            l = [l]
-        end
-        if !(typeof(u) <: Vector)
-            u = [u]
-        end
-        if length(unique([length(α), length(l), length(u)])) != 1
-            error("Invalid dimensions")
-        end
-        if any(.!(0 .<= α .<= 1))
-            error("Invalid level") 
-        end
-        if any(l .> u)
-            error("Invalid interval")
-        end
-        o = sortperm(α)
-        new(α[o], l[o], u[o])
+Generate comprehensive forecasts from any fitted model.
+
+Main interface for creating complete `Forecast` objects with point predictions,
+prediction intervals, and optional sample trajectories from any fitted model
+in the forecasting framework.
+
+# Arguments
+- `fitted::AbstractFittedModel`: Any fitted forecasting model
+- `interval_method::AbstractIntervalMethod`: Method for computing prediction intervals
+  - `NoInterval()`: Point forecasts only
+  - `EmpiricalInterval()`: Bootstrap from historical errors
+  - `ParametricInterval()`: Model-based analytical intervals
+  - `ModelTrajectoryInterval()`: Simulation-based intervals
+- `horizon::Union{Vector{Int}, Int, UnitRange{Int}}`: Forecast horizons (default: [1])
+- `levels::Vector{Float64}`: Confidence levels for intervals (default: [0.95])
+- `alpha_precision::Int`: Decimal precision for quantile computation (default: 10)
+- `include_median::Bool`: Whether to compute median forecasts (default: true)
+- `truth::Union{Vector{Float64}, Nothing}`: Observed values for evaluation (optional)
+- `model_name::String`: Descriptive name for the forecast (default: "")
+
+# Returns
+- `Forecast`: Complete forecast object containing:
+  - Point forecasts from the fitted model
+  - Median forecasts (if requested)
+  - Prediction intervals at specified levels
+  - Truth values (if provided)
+  - Sample trajectories (if interval method generates them)
+  - Temporal metadata (reference date, target dates, resolution)
+
+# Workflow
+1. **Validate inputs**: Check horizon specification and confidence levels
+2. **Generate intervals**: Call appropriate `interval_forecast` method
+3. **Extract components**: Separate point forecasts, intervals, trajectories
+4. **Create metadata**: Generate temporal information from fitted model
+5. **Construct object**: Build complete `Forecast` with all components
+
+# Example Usage
+```julia
+# Basic point forecasts
+fc = forecast(fitted_model, horizon=1:12)
+
+# With empirical prediction intervals
+fc = forecast(fitted_model, 
+              interval_method=EmpiricalInterval(n_trajectories=2000),
+              horizon=1:24,
+              levels=[0.8, 0.95],
+              model_name="ARMA(2,1)")
+
+# With parametric intervals and truth values
+fc = forecast(fitted_model,
+              interval_method=ParametricInterval(),
+              horizon=1:6,
+              truth=observed_values,
+              model_name="Exponential Smoothing")
+
+# Full trajectory-based analysis
+fc = forecast(fitted_model,
+              interval_method=ModelTrajectoryInterval(
+                  n_trajectories=5000,
+                  return_trajectories=true,
+                  positivity_correction=:truncate
+              ),
+              horizon=1:12,
+              levels=[0.5, 0.8, 0.95])
+```
+
+# Temporal Information
+Automatically extracts temporal metadata from the fitted model:
+- `reference_date`: Date of last observation
+- `target_date`: Dates being forecast
+- `resolution`: Time step between observations
+"""
+function forecast(fitted::AbstractFittedModel;
+                  interval_method::AbstractIntervalMethod = NoInterval(),
+                  horizon::Union{Vector{Int}, Int, UnitRange{Int}} = [1],
+                  levels::Vector{Float64} = [0.95],
+                  alpha_precision::Int = 10,
+                  include_median::Bool = true,
+                  truth::Union{Vector{Float64}, Nothing} = nothing,
+                  model_name::String = "")
+    #
+    # Validate input
+    if horizon isa Int
+        horizon = collect(1:horizon)
     end
-end
-
-mutable struct forecast
-    horizon::Vector{Int64}
-    mean::Vector{T1} where {T1 <: Real}
-    median::Vector{T2} where {T2 <: Real}
-    interval::Vector{forecastInterval}
-    truth::Vector{T3} where {T3 <: Real}
-    trajectory::Matrix{T4} where {T4 <: Real}
-    
-    function forecast(horizon = Int64[];
-        mean = Float64[],
-        median = Float64[],
-        interval = forecastInterval[],
-        truth = Float64[],
-        trajectory = zeros(0, 0))
-
-        horizon = Int64.(horizon)
-        if typeof(horizon) == Int64
-            horizon = [horizon]
-        end
-
-        nh = length(horizon)
-
-        if typeof(interval) == forecastInterval
-            interval = [interval]
-        end
-        if (length(interval) != nh) & (length(interval) > 0)
-            error("Forecast intervals do not match forecast horizon.")
-        end
-
-        if (length(truth) != nh) & (length(truth) > 0)
-            error("Truth data does not match forecast horizons.")
-        end
-
-        if (length(mean) != nh) & (length(mean) > 0)
-            error("Point forecast (mean) does not match forecast horizons.")
-        end
-
-        if (length(median) != nh) & (length(median) > 0)
-            error("Median forecast does not match forecast horizons.")
-        end
-
-        if (length(trajectory) > 0) & (size(trajectory)[2] != nh)
-            if size(trajectory[1] == nh)
-                trajectory = t(trajectory)
-            else
-                error("Trajectory dimensions do not match forecast horizons.")
-            end
-        end
-        new(horizon, mean, median, interval, truth, trajectory)
+    if horizon isa UnitRange{Int}
+        horizon = collect(horizon)
     end
+
+    all(0.0 .< levels .< 1.0) || throw(ArgumentError("Levels must be between 0 and 1"))
+    alpha_precision > 0 || throw(ArgumentError("Alpha precision must be positive"))
+
+    fc_point, fc_median, fc_interval, fc_trajectory = interval_forecast(fitted, interval_method, horizon, levels, alpha_precision = alpha_precision, include_median = include_median)
+
+    ti = fitted.temporal_info
+    rd = ti.start + ti.resolution * (length(fitted.x) - 1)
+
+    Forecast(horizon = horizon,
+        mean = fc_point,
+        median = fc_median,
+        intervals = fc_interval,
+        truth = truth,
+        trajectories = fc_trajectory,
+        reference_date = rd,
+        target_date = rd .+ horizon .* ti.resolution,
+        resolution = ti.resolution,
+        model_name = model_name)
 end
-
-
-function addTruth(x::forecast, truth::Vector{T1}) where {T1 <: Real}
-    forecast(x.horizon, mean = x.mean, median = x.median, interval = x.interval, truth = truth, trajectory = x.trajectory)
-end
-
-function addTrajectory(x::forecast, trajectory::Matrix{T1}) where {T1 <: Real}
-    forecast(x.horizon, mean = x.mean, median = x.median, interval = x.interval, truth = x.truth, trajectory = trajectory)
-end
-
-function addMean(x::forecast, trajectory::Vector{T1}) where {T1 <: Real}
-    forecast(x.horizon, mean = mean, median = x.median, interval = x.interval, truth = x.truth, trajectory = x.trajectory)
-end
-
-function addMedian(x::forecast, trajectory::Vector{T1}) where {T1 <: Real}
-    forecast(x.horizon, mean = x.mean, median = median, interval = x.interval, truth = x.truth, trajectory = x.trajectory)
-end
-
-
-function getQuantiles(x::forecast)
-    (i -> i.α).(x.interval)
-end
-
-# Translating between intervals and matrix
-function getQmat(x::forecast)
-    quants = getQuantiles(x)
-    if length(unique(quants)) > 1
-        error("Quantiles of intervals do not match")
-    end
-    nq = length(quants[1])
-    hasMedian = length(x.median) > 0
-    if (length(x.interval) == 0) & !hasMedian
-        error("No interval or median forecasts found")
-    end
-    out = zeros(2*nq + hasMedian, length(x.horizon))
-    for i in 1:length(x.interval)
-        out[1:nq, i] = x.interval[i].l
-        out[end - nq + 1:end, i] = reverse(x.interval[i].u)
-    end
-    if hasMedian
-        out[nq + 1, :] = x.median
-    end
-    return out
-end
-
