@@ -1,5 +1,8 @@
 # BaselineModels.jl
 
+[![CI](https://github.com/ManuelStapper/BaselineModels.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ManuelStapper/BaselineModels.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/ManuelStapper/BaselineModels.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ManuelStapper/BaselineModels.jl)
+
 A comprehensive Julia package for baseline forecasting methods.
 
 ## Overview
