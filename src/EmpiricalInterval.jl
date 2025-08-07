@@ -171,7 +171,7 @@ function interval_forecast(fitted::AbstractFittedModel,
     
     if method.bootstrap_distribution isa ContinuousUnivariateDistribution
         for i = 1:length(errors)
-            error_distribution[i] = fit(typeof(method.bootstrap_distribution), errors[i])
+            error_distribution[i] = Distributions.fit(typeof(method.bootstrap_distribution), errors[i])
         end
     else
         isnothing(method.bootstrap_distribution) || @warn "Bootstrap distribution treated as `nothing`"
