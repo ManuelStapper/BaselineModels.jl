@@ -228,44 +228,44 @@ function postFilter(x::Vector{T1}, forecast::Forecast,
 
     if setting.additive
         if has_mean(forecast)
-            meanOut = forecast.mean .- meanVals
+            meanOut = forecast.mean .+ meanVals
         else
             meanOut = nothing
         end
         if has_median(forecast)
-            medianOut = forecast.median .- meanVals
+            medianOut = forecast.median .+ meanVals
         else
             medianOut = nothing
         end
         if has_intervals(forecast)
-            intervalsOut = (h -> ForecastInterval(forecast.intervals[h].lower .- meanVals[h], forecast.intervals[h].upper .- meanVals[h], forecast.intervals[h].levels)).(1:length(forecast.horizon))
+            intervalsOut = (h -> ForecastInterval(forecast.intervals[h].lower .+ meanVals[h], forecast.intervals[h].upper .+ meanVals[h], forecast.intervals[h].levels)).(1:length(forecast.horizon))
         else
             intervalsOut = nothing
         end
         if has_trajectories(forecast)
-            trajectoriesOut = forecast.trajectories .- meanVals'
+            trajectoriesOut = forecast.trajectories .+ meanVals'
         else
             trajectoriesOut = nothing
         end
     else
         all(meanVals .> 0) || throw(DomainError("Seasonality has non-positive values"))
         if has_mean(forecast)
-            meanOut = forecast.mean ./ meanVals
+            meanOut = forecast.mean .* meanVals
         else
             meanOut = nothing
         end
         if has_median(forecast)
-            medianOut = forecast.median ./ meanVals
+            medianOut = forecast.median .* meanVals
         else
             medianOut = nothing
         end
         if has_intervals(forecast)
-            intervalsOut = (h -> ForecastInterval(forecast.intervals[h].lower ./ meanVals[h], forecast.intervals[h].upper ./ meanVals[h], forecast.intervals[h].levels)).(1:length(forecast.horizon))
+            intervalsOut = (h -> ForecastInterval(forecast.intervals[h].lower .* meanVals[h], forecast.intervals[h].upper .* meanVals[h], forecast.intervals[h].levels)).(1:length(forecast.horizon))
         else
             intervalsOut = nothing
         end
         if has_trajectories(forecast)
-            trajectoriesOut = forecast.trajectories ./ meanVals'
+            trajectoriesOut = forecast.trajectories .* meanVals'
         else
             trajectoriesOut = nothing
         end

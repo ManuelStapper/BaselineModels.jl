@@ -342,10 +342,11 @@ function fit_baseline(x::Vector{T},
         setting::Union{AbstractEstimationSetting, Nothing} = nothing,
         temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
     #
+    # First run data transformation, then fit season/trend
     if !isnothing(model.transformation)
-        xTransformed = transform(xFiltered, model.transformation)
+        xTransformed = transform(x, model.transformation)
     else
-        xTransformed = xFiltered
+        xTransformed = x
     end
 
     if !isnothing(model.season_trend)
@@ -354,9 +355,16 @@ function fit_baseline(x::Vector{T},
         xFiltered = xTransformed
         seasPar = nothing
     end
+    
+    # xFiltered is the time series -> transformed -> filtered
 
+    # Fit baseline model on final time series
     fitted_baseline = fit_baseline(xFiltered, model.model, setting = setting, temporal_info = temporal_info)
-    tPars = TransformedParameter(fitted_baseline.par, seasPar, xTransformed)
+    # Save all necessary parameters: baseline fit, seasonality parameters and final time series
+    tPars = TransformedParameter(fitted_baseline.par, seasPar, xFiltered)
+
+    # Return results as original time series, transformed model,
+    # transformed parameters, fitted baseline, settings and temporal info
     TransformedFitted(x, model, tPars, fitted_baseline, setting, temporal_info)
 end
 
@@ -383,28 +391,31 @@ function forecast(fitted::TransformedFitted;
         truth::Union{Vector{Float64}, Nothing} = nothing,
         model_name::String = "")
     #
+    # First forecast on the baseline level
     fc_baseline = forecast(fitted.fitted_baseline,
         interval_method = interval_method,
         horizon = horizon,
         levels = levels,
         alpha_precision = alpha_precision,
         include_median = include_median,
-        truth = truth,
+        truth = nothing,
         model_name = model_name)
-    #
+    # Save point and interval predictions
     fc_point = fc_baseline.mean
     fc_median = fc_baseline.median
     fc_intervals = fc_baseline.intervals
     fc_trajectories = fc_baseline.trajectories
 
+    # If there is season/trend filtering, reverse it
     if !isnothing(fitted.model.season_trend)
-        forecastOut = postFilter(fitted.x, forecastOut, fitted.model.season_trend, fitted.par.seasParameter)
+        forecastOut = postFilter(fitted.par.xTransformed, fc_baseline, fitted.model.season_trend, fitted.par.seasParameter)
         fc_point = forecastOut.mean
         fc_median = forecastOut.median
         fc_intervals = forecastOut.intervals
         fc_trajectories = forecastOut.trajectories
     end
     
+    # Then, if data is transformed, reverse it
     if !isnothing(fitted.model.transformation)
         t = fitted.model.transformation
         if !isnothing(fc_point)
@@ -427,7 +438,7 @@ function forecast(fitted::TransformedFitted;
         mean = fc_point,
         median = fc_median,
         intervals = fc_intervals,
-        truth = fc_baseline.truth,
+        truth = truth,
         trajectories = fc_trajectories,
         reference_date = fc_baseline.reference_date,
         target_date = fc_baseline.target_date,
