@@ -272,7 +272,7 @@ function interval_forecast(fitted::MarginalFitted,
     include_median::Bool = true)
 
     pp = minimum([fitted.model.p, length(fitted.x)])
-    xx = fitted.x[end-pp-1:end]
+    xx = fitted.x[end-pp+1:end]
     Random.seed!(method.seed)
 
     if horizon isa Int
