@@ -674,7 +674,7 @@ Performs forward pass through the data computing:
 
 Used internally during estimation and for generating residual diagnostics.
 """
-function ETSFilter(x::Vector{Float64}, model::ETSModel, par::ETSParameter)
+function ETSFilter(x::Vector{T1}, model::ETSModel, par::ETSParameter) where {T1 <: Real}
     T = length(x)
     xHat = zeros(T)
     ϵ = zeros(T)
@@ -720,7 +720,7 @@ Computes reasonable starting values for optimisation:
 
 Automatically handles different model types and seasonal periods.
 """
-function getInitial(x::Vector{Float64}, model::ETSModel)
+function getInitial(x::Vector{T1}, model::ETSModel) where {T1 <: Real}
     coef = ETSTuning(0.1, 0.01, 0.01, 0.99)
     T = length(x)
     if !(model.season isa NSeason)
@@ -761,7 +761,7 @@ function getInitial(x::Vector{Float64}, model::ETSModel)
     ETSParameter(coef, ETSSpace(l, b, sNorm))
 end
 
-function L_fun(x::Vector{Float64}, model::ETSModel, parVec::Vector{Float64})
+function L_fun(x::Vector{T1}, model::ETSModel, parVec::Vector{Float64})  where {T1 <: Real}
     par = ETSθ2par(parVec, model)
     if !(0 <= par.θ.α <= 1) | !(0 <= par.θ.β <= par.θ.α) | !(0 <= par.θ.γ <= 1 - par.θ.α) | !(0 <= par.θ.ϕ <= 1)
         return Inf
@@ -844,6 +844,9 @@ function fit_baseline(x::Vector{T1},
         model::ETSModel;
         setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
         temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
+    if isnothing(setting)
+        setting = INARCHEstimationSetting()
+    end
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
     estVec = optimize(vars -> L_fun(x, model, vars), initVec).minimizer

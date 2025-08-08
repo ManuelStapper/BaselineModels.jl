@@ -216,10 +216,10 @@ function fit_baseline(x::Vector{Int},
     INARCHFitted(x, model, par, setting, temporal_info)
 end
 
-function fit_baseline(x::Vector{Real},
+function fit_baseline(x::Vector{T1},
     model::INARCHModel;
     setting::Union{INARCHEstimationSetting, Nothing} = INARCHEstimationSetting(),
-    temporal_info::TemporalInfo = TemporalInfo())
+    temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
     if isnothing(setting)
         setting = INARCHEstimationSetting()
     end
