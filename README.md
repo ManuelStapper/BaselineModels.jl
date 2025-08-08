@@ -112,7 +112,7 @@ mae_score = score(forecast_result, MAE())
 >
 >The density of the marginal distribution is estimated as
 >
->$$\hat{f}(y) = \frac{1}{Th} \sum_{t = 1}^T K\left(\frac{y - y_t}{h}\right)
+> $$\hat{f}(y) = \frac{1}{Th} \sum_{t = 1}^T K\left(\frac{y - y_t}{h}\right)$$
 >
 >where K is a kernel and h is the bandwidth.
 >
@@ -182,7 +182,7 @@ mae_score = score(forecast_result, MAE())
 >
 >Linear regression model with polynomial time trend of order d fitted to p most recent obervations
 >
->$$y_t = \beta_0 + \beta_1 t + ... + \beta_d t^d + \epsilon_t$$
+> $$y_t = \beta_0 + \beta_1 t + ... + \beta_d t^d + \epsilon_t$$
 >
 ><ins>Architecture</ins>
 > 
@@ -244,7 +244,7 @@ mae_score = score(forecast_result, MAE())
 >
 >The ARMA(p, q) model follows the specification:
 >  
->$$X_t - \mu_t = \epsilon_t + \sum_{i=1}^p \alpha_i (X_{t-i} - \mu_{t-i}) + \sum_{i=1}^q \beta_i \epsilon_{t-i}$$
+> $$X_t - \mu_t = \epsilon_t + \sum_{i=1}^p \alpha_i (X_{t-i} - \mu_{t-i}) + \sum_{i=1}^q \beta_i \epsilon_{t-i}$$
 >
 >where $\mu_t = \mu(\theta, t)$ is a deterministic trend/seasonal function.
 >
@@ -284,7 +284,7 @@ mae_score = score(forecast_result, MAE())
 >
 >INARCH(p) model with optional seasonality, either Poisson or Negative Bionomial (conditional) distribution with mean
 >
->$$\lambda_t = \mu_t(\beta_0 + \sum_{i = 1}^p (y_{t-i}/\mu_{t-i}))$$
+> $$\lambda_t = \mu_t(\beta_0 + \sum_{i = 1}^p (y_{t-i}/\mu_{t-i}))$$
 >
 >where $$\mu_t$$ is the seasonality component, $$\log(\mu_t)$$ is a harmonic wave of order k.
 >
@@ -323,9 +323,9 @@ mae_score = score(forecast_result, MAE())
 >
 >Exponential smoothing, decomposition into error, trend and seasonality. Errors can be additive or multiplicative. Seasonality can additionally be none. Trend component can be damped, if included in the model. All model variants can be summarised in state-space form
 > 
->$$x_t = w(z_{t-1}) + r(z_{t-1})\epsilon_t$$
+> $$x_t = w(z_{t-1}) + r(z_{t-1})\epsilon_t$$
 >
->$$z_t = f(z_{t-1}) + g(z_{t-1})\epsilon_t$$
+> $$z_t = f(z_{t-1}) + g(z_{t-1})\epsilon_t$$
 >
 >where $$z_t$$ is the state vector.
 >
