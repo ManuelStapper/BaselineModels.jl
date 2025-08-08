@@ -845,7 +845,7 @@ function fit_baseline(x::Vector{T1},
         setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
         temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
     if isnothing(setting)
-        setting = INARCHEstimationSetting()
+        setting = ETSEstimationSetting()
     end
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
