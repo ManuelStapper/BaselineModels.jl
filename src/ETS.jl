@@ -840,10 +840,10 @@ println("Trend smoothing: ", fitted.par.θ.β)
 println("Seasonal smoothing: ", fitted.par.θ.γ)
 ```
 """
-function fit_baseline(x::Vector{Float64},
+function fit_baseline(x::Vector{T1},
         model::ETSModel;
         setting::Union{ETSEstimationSetting, Nothing} = ETSEstimationSetting(),
-        temporal_info::TemporalInfo = TemporalInfo())
+        temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
     init = getInitial(x, model)
     initVec = ETSpar2θ(init, model)
     estVec = optimize(vars -> L_fun(x, model, vars), initVec).minimizer
