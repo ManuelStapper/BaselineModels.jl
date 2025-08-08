@@ -235,7 +235,9 @@ function quantile_from_kde(par::KDEParameter, q::Union{Float64, Vector{Float64}}
     keep = par.density .> 0
     xx = [par.x_seq[1] - (par.x_seq[2] - par.x_seq[1]); par.x_seq[keep]]
     yy = cumsum([0.0; par.density[keep]])/sum(par.density)
-    itp = linear_interpolation(yy, xx)
+    # Avoid numerical inaccuracy
+    keep = findall(diff(yy) .> 0) .+ 1
+    itp = linear_interpolation(yy[keep], xx[keep])
     itp(q)
 end
 
