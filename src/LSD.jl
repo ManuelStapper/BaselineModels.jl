@@ -58,7 +58,7 @@ Parameters for fitted LSD model.
 Each element μ[i] represents the average value for periodic position i,
 computed from all historical observations at that position (±window).
 """
-struct LSDParameter <: AbstractModelParrameters
+struct LSDParameter <: AbstractModelParameters
     μ::Vector{Float64}
     function LSDParameter(μ)
         new(Float64.(μ))
