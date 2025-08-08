@@ -342,20 +342,20 @@ function fit_baseline(x::Vector{T},
         setting::Union{AbstractEstimationSetting, Nothing} = nothing,
         temporal_info::TemporalInfo = TemporalInfo()) where {T <: Real}
     #
-    if !isnothing(model.season_trend)
-        xFiltered, seasPar = preFilter(x, model.season_trend)
-    else
-        xFiltered = x
-        seasPar = nothing
-    end
-
     if !isnothing(model.transformation)
         xTransformed = transform(xFiltered, model.transformation)
     else
         xTransformed = xFiltered
     end
 
-    fitted_baseline = fit_baseline(xTransformed, model.model, setting = setting, temporal_info = temporal_info)
+    if !isnothing(model.season_trend)
+        xFiltered, seasPar = preFilter(xTransformed, model.season_trend)
+    else
+        xFiltered = xTransformed
+        seasPar = nothing
+    end
+
+    fitted_baseline = fit_baseline(xFiltered, model.model, setting = setting, temporal_info = temporal_info)
     tPars = TransformedParameter(fitted_baseline.par, seasPar, xTransformed)
     TransformedFitted(x, model, tPars, fitted_baseline, setting, temporal_info)
 end
@@ -396,6 +396,14 @@ function forecast(fitted::TransformedFitted;
     fc_median = fc_baseline.median
     fc_intervals = fc_baseline.intervals
     fc_trajectories = fc_baseline.trajectories
+
+    if !isnothing(fitted.model.season_trend)
+        forecastOut = postFilter(fitted.x, forecastOut, fitted.model.season_trend, fitted.par.seasParameter)
+        fc_point = forecastOut.mean
+        fc_median = forecastOut.median
+        fc_intervals = forecastOut.intervals
+        fc_trajectories = forecastOut.trajectories
+    end
     
     if !isnothing(fitted.model.transformation)
         t = fitted.model.transformation
@@ -426,9 +434,6 @@ function forecast(fitted::TransformedFitted;
         resolution = fc_baseline.resolution,
         model_name = fc_baseline.model_name)
 
-    if !isnothing(fitted.model.season_trend)
-        forecastOut = postFilter(fitted.x, forecastOut, fitted.model.season_trend, fitted.par.seasParameter)
-    end
     forecastOut
 end
 
