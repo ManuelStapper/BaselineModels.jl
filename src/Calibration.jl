@@ -115,10 +115,10 @@ function create_step(fc::Forecast; horizon::Union{Int, Vector{Int}, UnitRange{In
 
     if has_median(fc)
         α = [α; 0.5; reverse(1 .- α)]
-        q = [fc.intervals[ind].lower; fc.median[ind]; reverse(fc.intervals[ind].upper)]
+        q = [reverse(fc.intervals[ind].lower); fc.median[ind]; fc.intervals[ind].upper]
     else
         α = [α; reverse(1 .- α)]
-        q = [fc.intervals[ind].lower; reverse(fc.intervals[ind].upper)]
+        q = [reverse(fc.intervals[ind].lower); fc.intervals[ind].upper]
     end
     if truth <= q[1]
         return OneStepFunction(0.0, α[1])
