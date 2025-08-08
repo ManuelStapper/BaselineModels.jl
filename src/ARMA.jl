@@ -317,6 +317,10 @@ function fit_baseline(x::Vector{T1},
              model::ARMAModel;
              setting::Union{ARMAEstimationSetting, Nothing} = ARMAEstimationSetting(),
              temporal_info::TemporalInfo = TemporalInfo()) where {T1 <: Real}
+    #
+    if isnothing(setting)
+        setting = ARMAEstimationSetting()
+    end
     # (Negative) Log-likelihood function for optimisation
     function tf(θ, x, model, ensure_stability)
         # Only check for positive variance, other restrictions not imposed
