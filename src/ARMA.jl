@@ -345,8 +345,21 @@ function fit_baseline(x::Vector{T1},
         
         yHat = zeros(T)
         yHat[1:M] = zeros(M)
-        for t = M+1:T
-            yHat[t] = sum(par.α .* y[t-1:-1:t-p]) .+ sum(par.β .* (y[t-1:-1:t-q] .- yHat[t-1:-1:t-q]))
+
+        @inbounds for t = M+1:T
+            # yHat[t] = sum(par.α .* y[t-1:-1:t-p]) .+ sum(par.β .* (y[t-1:-1:t-q] .- yHat[t-1:-1:t-q]))
+            ar_sum = 0.0
+            for i = 1:p
+                ar_sum += par.α[i] * y[t-i]
+            end
+            
+            # Efficient MA component
+            ma_sum = 0.0
+            for j = 1:q
+                ma_sum += par.β[j] * (y[t-j] - yHat[t-j])
+            end
+            
+            yHat[t] = ar_sum + ma_sum
         end
         d = Normal.(yHat, sqrt(par.σ²))
         -sum(logpdf.(d, y))
