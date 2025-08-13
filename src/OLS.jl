@@ -360,6 +360,10 @@ function interval_forecast(fitted::OLSFitted,
     y = fitted.x[end-p + 1:end]
 
     σ = sqrt(sum((y .- X*β).^2)/(p - d - 1))
+    # Add fallback if σ is 0
+    if σ < 0.00001
+        σ = 0.00001
+    end
     d_error = Normal(0, σ)
 
     fc_point_pos = copy(fc_point)
