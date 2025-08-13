@@ -237,12 +237,12 @@ function quantile_from_kde(par::KDEParameter, q::Union{Float64, Vector{Float64}}
     xx = par.x_seq[keep]
     yy = par.density[keep]
     # Remove small differences in x
-    keep = [1; findall(diff(xx) .> 1e10) .+ 1]
+    keep = [1; findall(diff(xx) .> 1e-10) .+ 1]
     xx = xx[keep]
     yy = yy[keep]
     # Add padding at lower end and scale density
-    xx = [par.x_seq[1] - (par.x_seq[2] - par.x_seq[1]); par.x_seq[keep]]
-    yy = cumsum([0.0; par.density[keep]])/sum(par.density)
+    xx = [par.x_seq[1] - (par.x_seq[2] - par.x_seq[1]); par.x_seq]
+    yy = cumsum([0.0; yy])./sum(yy)
     # Linear interpolation
     if q isa Float64
         return quantile_from_kde(par, [q])
