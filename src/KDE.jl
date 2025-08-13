@@ -232,13 +232,36 @@ Extract quantiles from fitted KDE.
 Used internally for parametric interval construction.
 """
 function quantile_from_kde(par::KDEParameter, q::Union{Float64, Vector{Float64}})
+    # Remove zero density
     keep = par.density .> 0
+    xx = par.x_seq[keep]
+    yy = par.density[keep]
+    # Remove small differences in x
+    keep = [1; findall(diff(xx) .> 1e10) .+ 1]
+    xx = xx[keep]
+    yy = yy[keep]
+    # Add padding at lower end and scale density
     xx = [par.x_seq[1] - (par.x_seq[2] - par.x_seq[1]); par.x_seq[keep]]
     yy = cumsum([0.0; par.density[keep]])/sum(par.density)
-    # Avoid numerical inaccuracy
-    keep = findall(diff(yy) .> 0) .+ 1
-    itp = linear_interpolation(yy[keep], xx[keep])
-    itp(q)
+    # Linear interpolation
+    if q isa Float64
+        return quantile_from_kde(par, [q])
+    end
+    nq = length(q)
+    out = zeros(nq)
+    ix = 1
+    iq = 1
+    while true
+        if q[iq] <= xx[ix + 1]
+            out[iq] = yy[ix] + (xx[ix + 1] - q[iq])/(xx[ix + 1] - xx[ix])*(yy[ix + 1] - yy[ix])
+            iq += 1
+            if iq > nq
+                return out
+            end
+        else
+            ix += 1
+        end
+    end
 end
 
 """
