@@ -252,8 +252,8 @@ function quantile_from_kde(par::KDEParameter, q::Union{Float64, Vector{Float64}}
     ix = 1
     iq = 1
     while true
-        if q[iq] <= xx[ix + 1]
-            out[iq] = yy[ix] + (xx[ix + 1] - q[iq])/(xx[ix + 1] - xx[ix])*(yy[ix + 1] - yy[ix])
+        if q[iq] <= yy[ix + 1]
+            out[iq] = xx[ix] + (yy[ix + 1] - q[iq])/(yy[ix + 1] - yy[ix])*(xx[ix + 1] - xx[ix])
             iq += 1
             if iq > nq
                 return out
