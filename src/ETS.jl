@@ -1018,7 +1018,7 @@ function interval_forecast(fitted::ETSFitted,
             zCurr = f_function(zCurr, fitted.model, fitted.par.θ) + g_function(zCurr, fitted.model, fitted.par.θ)*ϵ[hh]
 
             if method.positivity_correction == :zero_floor
-                trajectories[i, hh]
+                trajectories[i, hh] = max(trajectories[i, hh], 0.0)
             end
         end
     end

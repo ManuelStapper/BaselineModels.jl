@@ -35,9 +35,10 @@ or when a shift is needed before taking logarithms.
 """
 struct LogPlusOneTransform <: AbstractDataTransformation
     constant::Float64
-    function LogPlusOneTransform(c = 1)
+    clip_zero::Bool
+    function LogPlusOneTransform(c = 1, clip_zero = false)
         c isa Real || throw(ArgumentError("Constant must be a real number"))
-        new(c)
+        new(c, clip_zero)
     end
 end
 
@@ -166,7 +167,11 @@ function transform(x::Vector{T}, t::LogPlusOneTransform) where {T <: Real}
 end
 
 function inverse_transform(y::Vector{T}, t::LogPlusOneTransform) where {T <: Real}
-    return exp.(y) .- t.constant
+    if t.clip_zero
+        return max(exp.(y) .- t.constant, 0.0)
+    else
+        return exp.(y) .- t.constant
+    end
 end
 
 function transform(x::Vector{T}, t::LogTransform) where {T <: Real}
