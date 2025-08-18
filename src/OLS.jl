@@ -382,7 +382,7 @@ function interval_forecast(fitted::OLSFitted,
     for h = 2:maximum(horizon)
         trajectories[:, h] = makeStep.(trajectories[:, h-1], d_error, method.positivity_correction == :truncate)
         if method.positivity_correction == :zero_clip
-            trajectories[trajectories[:, h] .< 0, 1] .= 0.0
+            trajectories[trajectories[:, h] .< 0, h] .= 0.0
         end
     end
 
@@ -392,10 +392,6 @@ function interval_forecast(fitted::OLSFitted,
 
     trajectories = trajectories[:, horizon]
     fc_point = fc_point[horizon]
-    
-    if method.positivity_correction == :post_clip
-        trajectories[trajectories .< 0] .= 0.0
-    end
 
     # Removing the seed
     Random.seed!(nothing)

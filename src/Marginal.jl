@@ -223,7 +223,7 @@ function interval_forecast(fitted::MarginalFitted,
     all_quantiles = quantile(fitted.x[end-pp+1:end], alpha)
     
     if method.positivity_correction == :post_clip
-        all_quantiles[all_quantiles .< 0] .= 0
+        all_quantiles[all_quantiles .< 0] .= 0.0
     end
 
     ls = reverse(all_quantiles[alpha .< 0.5])

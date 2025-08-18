@@ -414,6 +414,8 @@ function interval_forecast(fitted::INARCHFitted,
 
         λ .*= seas[hh]
 
+        λ[λ .> 1e16] .= trunc(Int64, 1e16)
+
         if nb
             pp = ϕ ./ (ϕ .+ λ)
             trajectories[:, hh] = rand.(NegativeBinomial.(ϕ, pp))

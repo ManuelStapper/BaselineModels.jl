@@ -37,12 +37,12 @@ function make_step(d::Vector{Float64}, from::Float64, truncate::Bool, clip::Bool
     if truncate
         valid_errors = d[d .>= -from]
         if isempty(valid_errors)
-            return from
+            return 0.0
         end
         return from + sample(d[d .>= -from])
     else
         if isempty(d)
-            return from
+            return 0.0
         end
         out = from + sample(d)
         if clip && (out < 0)
@@ -148,6 +148,7 @@ function interval_forecast(fitted::AbstractFittedModel,
 
     # Create point forecasts
     fc_point = point_forecast(fitted, horizon)
+
     # Structure level and probabilities
     if include_median
         levels = [levels; 0.0]
@@ -190,6 +191,11 @@ function interval_forecast(fitted::AbstractFittedModel,
         else
             trajectories[:, i] = [make_step(error_distribution[1], fc_point[i], truncated, clip) for _ in 1:method.n_trajectories]
         end
+    end
+
+    if method.positivity_correction == :post_clip
+        trajectories[trajectories .< 0] .= 0.0
+        fc_point[fc_point .< 0] .= 0.0
     end
 
     # Removing the seed
