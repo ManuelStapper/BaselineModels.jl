@@ -1,4 +1,4 @@
-using Test, BaselineModels, Random, Distributions
+using Test, ForecastBaselines, Random, Distributions
 using Dates
 
 # Set seed for reproducible tests

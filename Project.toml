@@ -1,4 +1,4 @@
-name = "BaselineModels"
+name = "ForecastBaselines"
 uuid = "d939df8b-32bd-4754-9006-1ae460420eb6"
 authors = ["ManuelStapper"]
 version = "0.1.0"

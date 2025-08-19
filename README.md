@@ -1,13 +1,13 @@
-# BaselineModels.jl
+# ForecastBaselines.jl
 
-[![CI](https://github.com/ManuelStapper/BaselineModels.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ManuelStapper/BaselineModels.jl/actions/workflows/CI.yml)
-[![codecov](https://codecov.io/gh/ManuelStapper/BaselineModels.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ManuelStapper/BaselineModels.jl)
+[![CI](https://github.com/ManuelStapper/ForecastBaselines.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ManuelStapper/ForecastBaselines.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/ManuelStapper/ForecastBaselines.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ManuelStapper/ForecastBaselines.jl)
 
 A comprehensive Julia package for baseline forecasting methods.
 
 ## Overview
 
-BaselineModels.jl provides a framework for time series forecasting. The package implements a collection of baselines and established forecasting methods with a consistent interface across all models.
+ForecastBaselines.jl provides a framework for time series forecasting. The package implements a collection of baselines and established forecasting methods with a consistent interface across all models.
 
 ### Key Features
 
@@ -20,13 +20,13 @@ BaselineModels.jl provides a framework for time series forecasting. The package 
 
 ```julia
 using Pkg
-Pkg.add("https://github.com/ManuelStapper/BaselineModels.jl")
+Pkg.add("https://github.com/ManuelStapper/ForecastBaselines.jl")
 ```
 
 ## Basic Usage
 
 ```julia
-using BaselineModels
+using ForecastBaselines
 
 # Fit an ARMA model to time series data
 model = ARMAModel(p=2, q=1)
@@ -399,7 +399,7 @@ mae_score = score(forecast_result, MAE())
 
 ## Uncertainty Quantification
 
-BaselineModels.jl provides four approaches to prediction interval construction:
+ForecastBaselines.jl provides four approaches to prediction interval construction:
 
 <details>
 <summary><b>NoInterval</b>: Point forecasts only</summary><br>
@@ -489,7 +489,7 @@ Available transformations include logarithmic, power/Box-Cox, and square root tr
 
 ## Model Evaluation
 
-BaselineModels.jl implements scoring rules for forecast evaluation and tools to assess calibration:
+ForecastBaselines.jl implements scoring rules for forecast evaluation and tools to assess calibration:
 
 ### Point Forecast Accuracy
 - Mean Absolute Error (MAE), Root Mean Square Error (RMSE)
@@ -564,10 +564,10 @@ To add models, see also ModelTemplate.jl
 ## Citation
 
 ```bibtex
-@software{BaselineModels.jl,
+@software{ForecastBaselines.jl,
   author = {Manuel Stapper},
-  title = {BaselineModels.jl: Baseline Forecasting Methods in Julia},
-  url = {https://github.com/ManuelStapper/BaselineModels.jl},
+  title = {ForecastBaselines.jl: Baseline Forecasting Methods in Julia},
+  url = {https://github.com/ManuelStapper/ForecastBaselines.jl},
   version = {0.1.0},
   year = {2025}
 }
