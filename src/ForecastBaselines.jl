@@ -1,4 +1,4 @@
-module BaselineModels
+module ForecastBaselines
 
 using LinearAlgebra, Random, Dates, Distributions, Printf
 using Polynomials, Optim, Interpolations, KernelDensity
