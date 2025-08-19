@@ -168,7 +168,7 @@ end
 
 function inverse_transform(y::Vector{T}, t::LogPlusOneTransform) where {T <: Real}
     if t.clip_zero
-        return max(exp.(y) .- t.constant, 0.0)
+        return max.(exp.(y) .- t.constant, 0.0)
     else
         return exp.(y) .- t.constant
     end
