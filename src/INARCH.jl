@@ -389,6 +389,8 @@ function interval_forecast(fitted::INARCHFitted,
     hMax = maximum(horizon)
 
     trajectories = zeros(Int64, method.n_trajectories, hMax)
+    trajectoriesScl = zeros(Float64, method.n_trajectories, hMax)
+    
     tSeq = (T+1-p:T+hMax) ./ s .* (2*π)
     seas = zeros(hMax + p)
     if s > 0
@@ -408,7 +410,7 @@ function interval_forecast(fitted::INARCHFitted,
             if hh - i <= 0
                 λ .+= xOld[p + hh - i] * α[i]
             else
-                λ .+= trajectories[:, hh - i] .* α[i]
+                λ .+= trajectoriesScl[:, hh - i] .* α[i]
             end
         end
 
@@ -422,6 +424,7 @@ function interval_forecast(fitted::INARCHFitted,
         else
             trajectories[:, hh] = rand.(Poisson.(λ))
         end
+        trajectoriesScl[:, hh] = trajectories[:, hh] ./ seas[hh]
     end
 
     trajectories = trajectories[:, horizon]
