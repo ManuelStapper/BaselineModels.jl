@@ -362,9 +362,9 @@ Used internally for trajectory-based interval forecasting.
 """
 function rand_from_kde(par::KDEParameter, n::Union{Int, Tuple{Int, Int}}, lower_bound::Float64 = -Inf)
     delta = par.x_seq[2] - par.x_seq[1]
-    weights = par.density
+    weights = copy(par.density)
     weights[par.x_seq .< lower_bound + delta/2] .= 0.0
-    wsample(par.x_seq, weights, n) .+ rand(n) .* delta .- delta/2
+    wsample(par.x_seq, weights, n) .+ rand(Uniform(), n) .* delta .- delta/2
 end
 
 function rand_from_kde(par::KDEParameter, lower_bound::Float64 = -Inf)
