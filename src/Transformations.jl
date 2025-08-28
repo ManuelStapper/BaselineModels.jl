@@ -221,12 +221,14 @@ function inverse_transform(y::Vector{T}, t::PowerPlusOneTransform) where {T <: R
     
     if t.lambda == 0
         if t.clip_zero
+            y = max.(y, 0.0)
             return max.(exp.(y) .- t.constant, 0.0)
         else
             return exp.(y) .- t.constant
         end
     else
         if t.clip_zero
+            y = max.(y, 0.0)
             return max.(y.^(1 ./ t.lambda) .- t.constant, 0.0)
         else
             return y.^(1 ./ t.lambda) .- t.constant
