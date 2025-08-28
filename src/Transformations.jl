@@ -123,10 +123,10 @@ struct PowerPlusOneTransform <: AbstractDataTransformation
     lambda::Float64
     constant::Float64
     clip_zero::Bool
-    function PowerPlusOneTransform(lambda; c = 1.0, clip_zero = false)
+    function PowerPlusOneTransform(lambda; constant = 1.0, clip_zero = false)
         lambda isa Real || throw(ArgumentError("lambda must be a real number"))
-        c isa Real || throw(ArgumentError("constant must be a real number"))
-        new(lambda, c, clip_zero)
+        constant isa Real || throw(ArgumentError("constant must be a real number"))
+        new(lambda, constant, clip_zero)
     end
 end
 
@@ -215,16 +215,22 @@ function transform(x::Vector{T}, t::PowerPlusOneTransform) where {T <: Real}
 end
 
 function inverse_transform(y::Vector{T}, t::PowerPlusOneTransform) where {T <: Real}
-    if t.clip_zero
-        y[y .<= -t.constant] .= -t.constant
-    else
+    if !t.clip_zero
         minimum(y) .> -t.constant || throw(ArgumentError("Power transform requires positive values"))
     end
     
     if t.lambda == 0
-        return exp.(y) .- t.constant
+        if t.clip_zero
+            return max.(exp.(y) .- t.constant, 0.0)
+        else
+            return exp.(y) .- t.constant
+        end
     else
-        y.^(1 ./ t.lambda) .- t.constant
+        if t.clip_zero
+            return max.(y.^(1 ./ t.lambda) .- t.constant, 0.0)
+        else
+            return y.^(1 ./ t.lambda) .- t.constant
+        end
     end
 end
 
