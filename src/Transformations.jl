@@ -448,7 +448,7 @@ function forecast(fitted::TransformedFitted;
         end
         if !isnothing(fc_intervals)
             if t isa PowerPlusOneTransform
-                if t.λ < 0
+                if t.lambda < 0
                     fc_intervals = (i -> ForecastInterval(inverse_transform(i.upper, t), inverse_transform(i.lower, t), i.levels)).(fc_intervals)
                 else
                     fc_intervals = (i -> ForecastInterval(inverse_transform(i.lower, t), inverse_transform(i.upper, t), i.levels)).(fc_intervals)
