@@ -122,10 +122,11 @@ Power transformation with additive constant.
 struct PowerPlusOneTransform <: AbstractDataTransformation
     lambda::Float64
     constant::Float64
-    function PowerPlusOneTransform(lambda, c)
+    clip_zero::Bool
+    function PowerPlusOneTransform(lambda; c = 1.0, clip_zero = false)
         lambda isa Real || throw(ArgumentError("lambda must be a real number"))
         c isa Real || throw(ArgumentError("constant must be a real number"))
-        new(lambda, c)
+        new(lambda, c, clip_zero)
     end
 end
 
@@ -202,16 +203,24 @@ function inverse_transform(y::Vector{T}, t::PowerTransform) where {T <: Real}
 end
 
 function transform(x::Vector{T}, t::PowerPlusOneTransform) where {T <: Real}
-    all(x .> t.constant) || throw(ArgumentError("Power transform requires positive values"))
+    all(x .> -t.constant) || throw(ArgumentError("Power transform requires positive values"))
     if t.lambda == 0
         return log.(x .+ t.constant)
     else
+        if t.clip_zero
+            x[x .< 1] .= 1.0
+        end
         (x .+ t.constant).^(t.lambda)
     end
 end
 
 function inverse_transform(y::Vector{T}, t::PowerPlusOneTransform) where {T <: Real}
-    minimum(y) .> -t.constant || throw(ArgumentError("Power transform requires positive values"))
+    if t.clip_zero
+        y[y .<= -t.constant] .= -t.constant
+    else
+        minimum(y) .> -t.constant || throw(ArgumentError("Power transform requires positive values"))
+    end
+    
     if t.lambda == 0
         return exp.(y) .- t.constant
     else
