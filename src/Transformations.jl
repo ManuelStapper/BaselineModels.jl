@@ -447,7 +447,15 @@ function forecast(fitted::TransformedFitted;
             fc_median = inverse_transform(fc_median, t)
         end
         if !isnothing(fc_intervals)
-            fc_intervals = (i -> ForecastInterval(inverse_transform(i.lower, t), inverse_transform(i.upper, t), i.levels)).(fc_intervals)
+            if t isa PowerPlusOneTransform
+                if t.λ < 0
+                    fc_intervals = (i -> ForecastInterval(inverse_transform(i.upper, t), inverse_transform(i.lower, t), i.levels)).(fc_intervals)
+                else
+                    fc_intervals = (i -> ForecastInterval(inverse_transform(i.lower, t), inverse_transform(i.upper, t), i.levels)).(fc_intervals)
+                end
+            else
+                fc_intervals = (i -> ForecastInterval(inverse_transform(i.lower, t), inverse_transform(i.upper, t), i.levels)).(fc_intervals)
+            end
         end
         if !isnothing(fc_trajectories)
             for h = 1:size(fc_trajectories)[2]
